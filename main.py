@@ -8,7 +8,7 @@ class Car:
         
     def braking(weight, infront):
         
-    def acel(infront?):
+    def accel(infront?):
         self.vel =      
     
     def update(self):
