@@ -1,6 +1,5 @@
 
 
-
 class Car:
     def __init__(self):
         self.weight = 0 #Measure of how good it can accelerate/brake
