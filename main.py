@@ -1,13 +1,19 @@
 
 
+
+
+'''
+=========================================================
+PSEUDOCODE BELOW
+=========================================================
 class Car:
     def __init__(self):
         self.weight = 0 #Measure of how good it can accelerate/brake
         self.vel = 0
         self.x, self.y = 0 #y is "basically only which rijstrook
-        
+       
     def braking(weight, infront):
-        
+       
     def accel(infront?):
         self.vel =      
     
@@ -34,3 +40,4 @@ class Simulation:
     def __init__(self):
         self.lanes = []
         
+'''
