@@ -1,4 +1,23 @@
 
+from src.Simulation import Simulation
+from src.Output import AbstractOutput
+import matplotlib.pyplot as plt
+
+f = open('times.txt','a')
+output = AbstractOutput()
+
+for i in range(10):
+    sim = Simulation(output, dt=0.05, cars=[1])
+    sim.runNormalManyCarSim(carcap=100,timestep=1000)
+    if ((i+1) % 1 == 0):
+        print("I did loop",i+1)
+    
+print("I finished!")
+plt.hist(output.data,25,alpha=0.7)
+plt.axvline(180,color='r')
+plt.xlabel("Time (s)")
+plt.ylabel("Frequency")
+plt.show()
 
 
 
