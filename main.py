@@ -9,25 +9,38 @@ def moving_average(a, n=3):
     ret[n:] = ret[n:] - ret[:-n]
     return ret[n - 1:] / n
 
+ps, average_times = [], []
 f = open('times.txt','a')
-output = AbstractOutput()
-DT=0.1
+DT = 0.001
 LANES = 5
 for i in range(1):
-    sim = Simulation(output, dt=DT,lanes=LANES, cars=np.ones(LANES,dtype=int)*1)
-    sim.manyCarsPP(p=0.2,carcap=500)
-    if ((i+1) % 1 == 0):
-        print("I did loop",i+1)
+    # Simulate
+    output = AbstractOutput()
+    sim = Simulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES,dtype=int)*1)
+    prob = 1
+    sim.manyCarsPP(p=prob/DT, carcap=500)
+
+    # Data gathering
+    ps.append(prob)
+    average_times.append(np.mean([x[0] for x in output.data[100:]]))  # append av time and ignore first 100 cars
+
+    if ((i+1) % 5 == 0):
+        print("I did loop", i+1)
     
 print("I finished!")
 #print(np.max(output.data))
+
+plt.plot(ps, average_times)
+plt.show()
+
+"""
 #plt.plot(moving_average(output.data,10))
 plt.hist(output.data,25,alpha=0.7)
 plt.axvline(5000*3.6/120,color='r')
 plt.xlabel("Time (s)")
 plt.ylabel("Count")
 plt.show()
-
+"""
 
 
 '''

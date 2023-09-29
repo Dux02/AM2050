@@ -1,14 +1,14 @@
 from io import TextIOWrapper
 from re import S
 from .Lane import Lane
-from .Car import Car, GUSTAVO,V_DESIRED, V_MIN
+from .Car import Car, GUSTAVO, V_DESIRED, V_MIN, CAR_LENGTH, PIXEL_PER_M  # Note that CAR_HEIGHT is set in Simulation.render
 from .Output import AbstractOutput
 from numpy import mean
 import pygame
 
 
 pygame.init()
-WIDTH, HEIGHT = 1500, 720
+WIDTH, HEIGHT = 1200, 600  # 1500, 720 blas computer
 window = pygame.display.set_mode((WIDTH, HEIGHT))
 font = pygame.font.Font("freesansbold.ttf",21)
 red = (255,0,0)
@@ -62,7 +62,7 @@ class Simulation:
                         delta_v = max(0, car.vel - othercar.vel)
 
                     SafetyDist = scale * 3*delta_v + 10
-                    if (car.x - 80 - 2*SafetyDist < othercar.x < car.x + 80 + 3*SafetyDist): #Don't overtake
+                    if (car.x - CAR_LENGTH - 2*SafetyDist < othercar.x < car.x + CAR_LENGTH + 3*SafetyDist): #Don't overtake
                         canOvertake = False
                         break
                 if (canOvertake and car.x < lane.length):
@@ -98,9 +98,12 @@ class Simulation:
             #av_text = font.render("No. of cars: "+ str(self.getCars()) + " cars",True,black,white)
             window.blit(av_text,(0,0))
 
+        clock = font.render("T+" + str(round(self.frames*self.dt)) + " s",True,black,white)
+        window.blit(clock, (0, 30))
+
         # Draw lanes
         n = len(self.lanes)
-        LANE_HEIGHT, LINE_HEIGHT = 80, 5
+        LANE_HEIGHT, LINE_HEIGHT = 20, 1
         empty_space_above = (HEIGHT - LANE_HEIGHT*n)/2
         pygame.draw.rect(window, grey, pygame.Rect(0, empty_space_above, WIDTH, LANE_HEIGHT*n+LINE_HEIGHT*(n-1)))
         for i in range(n-1):
@@ -108,29 +111,29 @@ class Simulation:
             pygame.draw.rect(window, black, pygame.Rect(0 , y, WIDTH, LINE_HEIGHT))
 
         # Draw cars
+        CAR_HEIGHT = 10
         for lane in self.lanes:
             lane_num = self.lanes.index(lane)
             for car in lane.vehicles:
                 if (0 < car.x - self.begin_draw < WIDTH):
                     draw_x = car.x - self.begin_draw
-                    draw_y = empty_space_above + (LANE_HEIGHT+LINE_HEIGHT) * lane_num + 20
+                    draw_y = empty_space_above + (LANE_HEIGHT+LINE_HEIGHT) * lane_num + int((LANE_HEIGHT-CAR_HEIGHT)/2)
 
                     # Draw safety distance to pass, in front, and to merge
-                    SafetyDist = max(car.vel*3,60)
+                    # SafetyDist = max(car.vel*3,CAR_LENGTH)  # outdated code
                     in_front_dist = car.s0
                     # pygame.draw.rect(window, (0, 160, 0),
-                    #                     pygame.Rect(draw_x + 80, draw_y + 32, 3*SafetyDist, 4))
+                    #                     pygame.Rect(draw_x + CAR_LENGTH, draw_y + 32, 3*SafetyDist, 4))
                     # pygame.draw.rect(window, (0, 160, 0),
                     #                     pygame.Rect(draw_x - 2*SafetyDist, draw_y + 32, 2*SafetyDist, 4))
                     # SafetyDist *= 2
 
                     # pygame.draw.rect(window, (0, 100, 0),
-                    #                     pygame.Rect(draw_x + 80, draw_y + 24, 3*SafetyDist, 4))
+                    #                     pygame.Rect(draw_x + CAR_LENGTH, draw_y + 24, 3*SafetyDist, 4))
                     # pygame.draw.rect(window, (0, 100, 0),
                     #                     pygame.Rect(draw_x-2*SafetyDist, draw_y + 24, 2*SafetyDist, 4))
 
-                    pygame.draw.rect(window, (0, 130, 0),
-                                        pygame.Rect(draw_x + 80, draw_y + 28, in_front_dist, 4))
+                    #pygame.draw.rect(window, (0, 130, 0), pygame.Rect(draw_x + CAR_LENGTH, draw_y + 28, in_front_dist, 4))
 
                     color = (A*(car.desiredvel+B),150,150)
                     if (color[0] >= 255):
@@ -138,19 +141,19 @@ class Simulation:
                     elif (color[0] <= 0):
                         color = (0, 0, 255)
                             
-                    pygame.draw.rect(window, color, pygame.Rect(draw_x, draw_y, 80, LANE_HEIGHT*0.6))
+                    pygame.draw.rect(window, color, pygame.Rect(draw_x, draw_y, CAR_LENGTH, CAR_HEIGHT))
                     #window.blit(self.image,(draw_x, draw_y))
-                    acc_text = font.render(str(round(car.a,1)), True, white, color)
-                    window.blit(acc_text, (draw_x,draw_y))
+                    #acc_text = font.render(str(round(car.a,1)), True, white, color)
+                    #window.blit(acc_text, (draw_x,draw_y))
 
         # Draw buttons and check if there being hovered over
         pygame.draw.rect(window, red, pygame.Rect(0, HEIGHT-40, 40, 40))
         pygame.draw.rect(window, green, pygame.Rect(50, HEIGHT-40, 40, 40))
         mouse = pygame.mouse.get_pos()
         if 0 < mouse[0] < 40 and HEIGHT-40 < mouse[1] < HEIGHT:
-            self.begin_draw -= 160*self.dt
+            self.begin_draw -= 160*self.dt*PIXEL_PER_M
         if 50 < mouse[0] < 90 and HEIGHT-40 < mouse[1] < HEIGHT:
-            self.begin_draw += 160*self.dt
+            self.begin_draw += 160*self.dt*PIXEL_PER_M
         window_pos = font.render(str(round(self.begin_draw)), True, black, white)
         pygame.draw.rect(window, white, pygame.Rect(90,HEIGHT-40,100,40))
         window.blit(window_pos, (100, HEIGHT-20))
@@ -182,7 +185,7 @@ class Simulation:
             print(e)
         return
         
-    def runNormalManyCarSim(self, carcap = 10,timestep = 20):
+    def runNormalManyCarSim(self, carcap=10, timestep=20):
         
         #""" #ABANDON ALL HOPE ALL YE ENTER HERE
         #Come on bro there's never any issues
@@ -215,18 +218,20 @@ class Simulation:
                         #print("CAR BIRTHED")
         #"""
         return
-    def manyCarsPP(self, p: float, carcap = 10):
+
+    def manyCarsPP(self, p: float, carcap=10):
+        """Run a complete simulation, generating carcap cars, with p the probability parameter"""
         carsgenerated = 0
         cars = self.getCars()
         while (cars > 0 or carsgenerated < carcap):
+            data_bit = []  # list to gather data we want to save each frame
             #print(cars)
             self.update()
             #self.output.save(self.getAvgSpeed()*3.6)
-            
-                
+
             for lane in self.lanes:
                 for car in lane.finishedVehicles:
-                    self.output.save((self.frames - car.spawnframe)*self.dt)
+                    data_bit.append((self.frames - car.spawnframe)*self.dt)  # time it took to get to the end
                     cars -= 1
                 lane.flushVehicles()
                 
@@ -234,4 +239,12 @@ class Simulation:
                     if (lane.generateCarP(p*self.dt,self.frames)):
                         cars += 1
                         carsgenerated += 1
+
+            if len(data_bit) != 0:
+                self.output.save(data_bit)
+
         return
+
+
+
+

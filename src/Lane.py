@@ -1,12 +1,12 @@
-from .Car import Car
+from .Car import Car, PIXEL_PER_M
 from numpy import linspace, mean
 from random import randint, random
 
-SPAWNSAFETYDIST = 200
+SPAWNSAFETYDIST = 5 * PIXEL_PER_M
 
 class Lane:
     def __init__(self, cars: int = 0):
-        self.length = 40*5000 #5 km 40 pixels = 1 m
+        self.length = 5000 * PIXEL_PER_M  # 5 km
         xcoords = linspace(0,self.length,cars)
         self.vehicles: list[Car] = [Car(xcoords[i]) for i in range(cars)]
         self.finishedVehicles: list[Car] = []
