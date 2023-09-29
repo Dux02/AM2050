@@ -1,4 +1,3 @@
-
 from src.Simulation import Simulation
 from src.Output import AbstractOutput
 import matplotlib.pyplot as plt
@@ -11,14 +10,14 @@ def moving_average(a, n=3):
 
 ps, average_times = [], []
 f = open('times.txt','a')
-DT = 0.001
+DT = 0.0005
 LANES = 5
 for i in range(1):
     # Simulate
     output = AbstractOutput()
     sim = Simulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES,dtype=int)*1)
-    prob = 1
-    sim.manyCarsPP(p=prob/DT, carcap=500)
+    prob = 0.1
+    sim.manyCarsPP(p=prob, carcap=500)
 
     # Data gathering
     ps.append(prob)

@@ -2,7 +2,7 @@ from .Car import Car, PIXEL_PER_M
 from numpy import linspace, mean
 from random import randint, random
 
-SPAWNSAFETYDIST = 5 * PIXEL_PER_M
+SPAWNSAFETYDIST = 10 * PIXEL_PER_M
 
 class Lane:
     def __init__(self, cars: int = 0):
@@ -85,11 +85,17 @@ class Lane:
         It will not spawn a car if there's not enough space to do so, regardless of the time since last spawn
         '''
         if (random() < p):
-            #TODO: Make this more efficient? If we asssure index 0 is closest to start
-            for car in self.vehicles:  
+            # TODO: Make this more efficient? If we assure index 0 is closest to start
+            if len(self.vehicles) == 0:
+                return False
+            if self.vehicles[0].x < SPAWNSAFETYDIST:
+                return False
+            """
+            for car in self.vehicles[]:  
                 if (car.x < SPAWNSAFETYDIST):
                     return False
-            self.vehicles.insert(0,Car(spawnframe=frame))
+            """
+            self.vehicles.insert(0, Car(spawnframe=frame))
             self.timeSinceLastCarGenerated = frame
             return True
         return False

@@ -13,7 +13,7 @@ PIXEL_PER_M = 10
 
 class Car:
     a_max = 1.44 
-    b_max = 4.66 / 2
+    b_max = 4.66 / 4
     sqrt_ab = 2*sqrt(a_max*b_max)
     def __init__(self, x = 0,spawnframe=0):
         self.desiredvel: float = abs(normal(V_DESIRED, GUSTAVO/3.6))  # Absolute value necessary to avoid negatives (even if unlikely!)
@@ -35,7 +35,7 @@ class Car:
         
         alpha = 0
         s = 5000
-        
+        """
         # On matters of getting angry or not
         if (self.vel < self.desiredvel*0.8 and not self.pissed):
             self.waited += 0  # We're waiting
@@ -53,20 +53,20 @@ class Car:
             self.pissed = False
             self.desiredvel = self.prepissedvel
             self.a_max /= 10
-
+        """
         self.overtaking = -1  # TEMPORARY
 
         if (infront is not None):
-            s = (infront.x - self.x - CAR_LENGTH)/ PIXEL_PER_M  # s is in meters
+            s = (infront.x - self.x - CAR_LENGTH)/PIXEL_PER_M  # s is in meters
             
             # Do we want to overtake?
-            if (s<5*self.vel and self.vel < self.desiredvel and self.desiredvel > infront.vel):
+            if (s < 5 * self.vel and self.vel < self.desiredvel and self.desiredvel > infront.vel):
                 # Can we overtake?
                 self.overtaking = 1
                 
             # Are we dead?
-            if (s<= 0.1):
-                #print("THOU HATH CRASHED @",self.x)
+            if (s <= 0.1):
+                # print("THOU HATH CRASHED @",self.x)
                 self.vel = 0
                 # infront.vel = infront.vel/2
                 infront.x += 0
@@ -76,8 +76,8 @@ class Car:
             # Update speed
             delta_v = self.vel - infront.vel
             # Data based on Ard Analyse.pdf
-            alpha = (self.vel*1.6 + 2 + self.vel*delta_v/self.sqrt_ab)/s
-            self.s0 = alpha * s
+            self.s0 = self.vel*1.6 + 2 + self.vel*delta_v/self.sqrt_ab
+            alpha = self.s0 / s
             
         # Do we want to merge?
         # if (self.vel > 0.8*self.desiredvel):
@@ -86,7 +86,7 @@ class Car:
         if (crash):
             print(self.a, self.vel, self.x, alpha)
         self.vel += self.a*dt
-        self.a = self.a_max* (1 - (self.vel/self.desiredvel)**4 - alpha**2)
+        self.a = self.a_max * (1 - (self.vel/self.desiredvel)**4 - alpha**2)
         #if (crash):
         #    print("Something's gone wrong!", self.a)
         # if (abs(self.a) > self.a_max):
