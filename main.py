@@ -10,13 +10,13 @@ def moving_average(a, n=3):
 
 ps, average_times = [], []
 f = open('times.txt','a')
-DT = 0.0005
+DT = 0.2
 LANES = 5
 for i in range(1):
     # Simulate
     output = AbstractOutput()
     sim = Simulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES,dtype=int)*1)
-    prob = 0.1
+    prob = 5
     sim.manyCarsPP(p=prob, carcap=500)
 
     # Data gathering
@@ -28,8 +28,10 @@ for i in range(1):
     
 print("I finished!")
 #print(np.max(output.data))
-
-plt.plot(ps, average_times)
+if (len(average_times) == 1 and False):
+    plt.plot(output.data[100:])
+else:
+    plt.plot(ps, average_times)
 plt.show()
 
 """

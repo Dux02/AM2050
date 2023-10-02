@@ -1,5 +1,3 @@
-from io import TextIOWrapper
-from re import S
 from .Lane import Lane
 from .Car import Car, GUSTAVO, V_DESIRED, V_MIN, CAR_LENGTH, PIXEL_PER_M  # Note that CAR_HEIGHT is set in Simulation.render
 from .Output import AbstractOutput
@@ -46,9 +44,6 @@ class Simulation:
             if (carsOvertaking is None):
                 continue
             for car in carsOvertaking:
-                if (i == 0 and car.overtaking == -1):
-                    # print("Guy should go right!")
-                    pass
                 if (i - car.overtaking == -1 or i - car.overtaking == len(self.lanes)):
                     #car.overtaking = 0
                     continue
@@ -58,14 +53,25 @@ class Simulation:
                 if (car.overtaking == 1):
                     scale = 2
                 for othercar in desiredLane.vehicles:
+                    if (othercar.x - car.x > 1000*PIXEL_PER_M): # TODO: Maybe we can put an abs term here?
+                        break # No need to waste resources and check cars beyond 1km.
+                    
                     delta_v = car.vel
-                    if (car.x > othercar.x):
+                    if (car.x > othercar.x): 
                         delta_v = max(0, othercar.vel - car.vel)
                     else:
                         delta_v = max(0, car.vel - othercar.vel)
                     SafetyDist = scale * 2 * delta_v * PIXEL_PER_M + 2*PIXEL_PER_M
                     # NOTICE: I removed the 2* and 3* factors here bc i feel they're inconsistent
                     if (car.x - CAR_LENGTH - SafetyDist < othercar.x < car.x + CAR_LENGTH + 1.5*SafetyDist):
+                        canOvertake = False
+                        break
+                    # NOTICE: The 2*s0 factor is a bit arbitrary. As long as its > car's overtaking factor 
+                    # (see: OVTF in Car.py) it's ok.
+                    # Additionally: we abuse Python's lazy evaluation of these expressions. If any of the first return false, desiredDist isn't called
+                    if (car.overtaking == -1 and othercar.x > car.x and 
+                        othercar.x - CAR_LENGTH - car.x < 2*max(car.desiredDist(othercar),0)*PIXEL_PER_M):
+                        #Prevents merging when the car in front will cause us to hit our brakes (quite hard!)
                         canOvertake = False
                         break
                 if (canOvertake and car.x < lane.length):
@@ -95,9 +101,9 @@ class Simulation:
         return cars
         
     def render(self):
-        if (self.frames % int(10/self.dt) == 0):
+        if (self.frames % int(2/self.dt) == 0):
             # Draw statistics
-            av_text = font.render("Avg speeds: "+ str([round(lane.getAvgSpeed()*3.6) for lane in self.lanes]) + " km/h",True,black,white)
+            av_text = font.render("Avg speeds: "+ str([round(lane.getAvgDesiredSpeeds()*3.6) for lane in self.lanes]) + " km/h",True,black,white)
             # av_text = font.render("No. of cars: "+ str(self.getCars()) + " cars",True,black,white)
             window.blit(av_text, (0, 0))
 
@@ -128,10 +134,12 @@ class Simulation:
                     elif (color[0] <= 0):
                         color = (0, 0, 255)
 
+                    if car.debug:
+                        color = (0, 255, 0)
                     # Draw safety distance to pass, in front, and to merge
                     # SafetyDist = max(car.vel*3,CAR_LENGTH)  # outdated code
-                    in_front_dist = car.s0 / PIXEL_PER_M
-                    print(in_front_dist)
+                    in_front_dist = car.s0 * PIXEL_PER_M
+                    #print(in_front_dist)
                     # pygame.draw.rect(window, (0, 160, 0),
                     #                     pygame.Rect(draw_x + CAR_LENGTH, draw_y + 32, 3*SafetyDist, 4))
                     # pygame.draw.rect(window, (0, 160, 0),

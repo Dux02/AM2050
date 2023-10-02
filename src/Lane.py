@@ -85,17 +85,13 @@ class Lane:
         It will not spawn a car if there's not enough space to do so, regardless of the time since last spawn
         '''
         if (random() < p):
-            # TODO: Make this more efficient? If we assure index 0 is closest to start
             if len(self.vehicles) == 0:
                 return False
             if self.vehicles[0].x < SPAWNSAFETYDIST:
                 return False
-            """
-            for car in self.vehicles[]:  
-                if (car.x < SPAWNSAFETYDIST):
-                    return False
-            """
-            self.vehicles.insert(0, Car(spawnframe=frame))
+            newCar = Car(spawnframe = frame)
+            newCar.vel = self.vehicles[0].vel # To avoid crashes, the cars come in with the same speed as the car in front
+            self.vehicles.insert(0, newCar)
             self.timeSinceLastCarGenerated = frame
             return True
         return False
