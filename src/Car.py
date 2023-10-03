@@ -1,7 +1,12 @@
 #Car class
 from typing import Union
 from numpy.random import normal
-from numpy import sqrt, sign
+from random import choice
+from numpy import sqrt, sign, exp
+
+import pygame
+pygame.mixer.init()
+beeps = [pygame.mixer.Sound("media/beep"+str(i+1)+".wav") for i in range(10)]
 V_MAX = 100 / 3.6 #100 km/h
 V_DESIRED = V_MAX * 1.2
 SIGMA = 2 #Standard deviation of the random initial velocities
@@ -54,20 +59,25 @@ class Car:
             self.desiredvel = self.prepissedvel
             self.a_max /= 10
         """
+        self.overtaking = -1
         
         if (infront is not None):
             s = (infront.x - self.x - CAR_LENGTH)/PIXEL_PER_M  # s is in meters
             delta_v = self.vel - infront.vel
             # Do we want to overtake?
-            # OVTF = 1.5, the factor time s0. Note this is similar to the previous code w/ a min. 3 second headway instead.
-            if (s < 1.5 * self.s0 and self.vel < self.desiredvel and self.desiredvel > infront.vel):
+            # OVTF = 1.2, the factor time s0. Note this is similar to the previous code w/ a min. 3 second headway instead.
+            if (s < 1.2 * self.s0 and self.vel < self.desiredvel and self.desiredvel > infront.vel):
                 # Can we overtake?
                 self.overtaking = 1
-                
+            
+            #Alexander's whimsical beeping
+            if (infront.vel < 0.5*self.desiredvel):
+                beep = choice(beeps)
+                pygame.mixer.Sound.play(beep)
         
         # Do we want to merge?
-        if (self.vel > 0.8*self.desiredvel):
-            self.overtaking = -1
+        # if (self.vel > 0.8*self.desiredvel):
+        #     self.overtaking = -1
         
         crash = self.advancedSpeed(dt, infront)
         if (crash):
@@ -113,14 +123,17 @@ class Car:
         ''' Returns the desired distance of the car based on the car in front of it, in meters.
             This follows the Intelligent Driver Model (IDM), with a reaction time of 1.6 seconds,
             a jam distance of 2 meters, and a difference in speed dependent term.
-            In the limiting case delta_v = 0, the desired distance is the safe braking distance.
+            In the limiting case delta_v <= 0, the desired distance is the jam distance.
             In the limiting case delta_v = self.vel, we find the distance scales quadratically with speed.
         '''
         delta_v = 0
+        factor = 1
         if (infront is not None):
             delta_v = self.vel - infront.vel
+            if (delta_v < 4):
+                factor = exp(delta_v-4) #when delta_v is small
         
-        return self.vel*1.6 + 2 + self.vel*delta_v/self.sqrt_ab 
+        return 2 + (self.vel*1.6 + self.vel*delta_v/self.sqrt_ab)*factor
 
     def updateSqrtAB(self):
         self.sqrt_ab = 2*sqrt(self.a_max, self.b_max)
