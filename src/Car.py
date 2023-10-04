@@ -1,4 +1,4 @@
-#Car class
+# Car class
 from typing import Union
 from numpy.random import normal
 from random import choice
@@ -7,11 +7,11 @@ from numpy import sqrt, sign, exp
 import pygame
 pygame.mixer.init()
 beeps = [pygame.mixer.Sound("media/beep"+str(i+1)+".wav") for i in range(10)]
-V_MAX = 100 / 3.6 #100 km/h
-V_DESIRED = V_MAX * 1.2
-SIGMA = 2 #Standard deviation of the random initial velocities
-GRINDSET = 0.1 #Standard dev. of random tick updates
-GUSTAVO = 10 #Standard dev. of desired velocities
+V_MAX = 100 / 3.6  # 100 km/h
+V_DESIRED = V_MAX * 1.2  # m/s
+SIGMA = 2  # Standard deviation of the random initial velocities
+GRINDSET = 0.1  # Standard dev. of random tick updates
+GUSTAVO = 10  # Standard dev. of desired velocities (kph)
 V_MIN = 60 / 3.6
 CAR_LENGTH = 20
 PIXEL_PER_M = 10
@@ -36,7 +36,7 @@ class Car:
         self.prepissedvel = self.desiredvel
         self.debug = False
     
-    def update(self,dt: float, infront: Union['Car', None] = None):
+    def update(self, frame: int, dt: float, infront: Union['Car', None] = None):
         crash = False
         
         s = 5000
@@ -69,11 +69,13 @@ class Car:
             if (s < 1.2 * self.s0 and self.vel < self.desiredvel and self.desiredvel > infront.vel):
                 # Can we overtake?
                 self.overtaking = 1
-            
-            #Alexander's whimsical beeping
-            if (infront.vel < 0.5*self.desiredvel):
+
+            """
+            # Alexander's whimsical beeping
+            if (infront.vel < 0.5*self.desiredvel and frame * dt % 10 == 0):
                 beep = choice(beeps)
                 pygame.mixer.Sound.play(beep)
+            """
         
         # Do we want to merge?
         # if (self.vel > 0.8*self.desiredvel):

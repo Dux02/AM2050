@@ -40,7 +40,7 @@ class Simulation:
     def update(self):
         for lane in self.lanes:
             i = self.lanes.index(lane)
-            carsOvertaking = lane.update(self.dt)
+            carsOvertaking = lane.update(self.frames, self.dt)
             if (carsOvertaking is None):
                 continue
             for car in carsOvertaking:
@@ -111,12 +111,17 @@ class Simulation:
     def render(self):
         if (self.frames % int(2/self.dt) == 0):
             # Draw statistics
-            av_text = font.render("Avg desired speeds: "+ str([round(lane.getAvgDesiredSpeeds()*3.6) for lane in self.lanes]) + " km/h",True,black,white)
+            pygame.draw.rect(window, white, pygame.Rect(0, 0, WIDTH, 90))
+            avd_text = font.render("Avg desired speeds: " + str([round(lane.getAvgDesiredSpeeds()*3.6) for lane in self.lanes]) + " km/h",
+                                   True, black,white)
+            av_text = font.render("Avg speeds: " + str([round(lane.getAvgSpeed() * 3.6) for lane in self.lanes]) + " km/h",
+                                  True, black, white)
             # av_text = font.render("No. of cars: "+ str(self.getCars()) + " cars",True,black,white)
-            window.blit(av_text, (0, 0))
+            window.blit(avd_text, (0, 0))
+            window.blit(av_text, (0, 30))
 
         clock = font.render("T+" + str(round(self.frames*self.dt)) + " s",True,black,white)
-        window.blit(clock, (0, 30))
+        window.blit(clock, (0, 60))
 
         # Draw lanes
         n = len(self.lanes)

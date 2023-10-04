@@ -12,8 +12,7 @@ class Lane:
         self.finishedVehicles: list[Car] = []
         self.timeSinceLastCarGenerated = 0
 
-    
-    def update(self,dt: float) -> list[Car]:
+    def update(self, frame: int, dt: float) -> list[Car]:
         numOfCars = len(self.vehicles)
         if (numOfCars == 0):
             return
@@ -21,9 +20,9 @@ class Lane:
         carsOvertaking: list[Car] = []
         for i in range(numOfCars):
             if (i == numOfCars-1):
-                self.vehicles[i].update(dt) 
+                self.vehicles[i].update(frame, dt)
             else:
-                self.vehicles[i].update(dt,self.vehicles[i+1])
+                self.vehicles[i].update(frame, dt,self.vehicles[i+1])
                 
             if (self.vehicles[i].overtaking != 0):
                     carsOvertaking.append(self.vehicles[i])

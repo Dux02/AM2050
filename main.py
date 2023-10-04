@@ -1,31 +1,48 @@
 from src.Simulation import Simulation
-from src.Output import AbstractOutput
+from src.Output import AbstractOutput, FileOutput
 import matplotlib.pyplot as plt
 import numpy as np
+
 
 def moving_average(a, n=3):
     ret = np.cumsum(a, dtype=float)
     ret[n:] = ret[n:] - ret[:-n]
     return ret[n - 1:] / n
 
+
 ps, average_times = [], []
-f = open('times.txt','a')
-DT = 0.05
-LANES = 5
-for i in range(1):
+f = open('times.txt', 'a')
+DT = 0.1  # DT=0.2 gives crashes (at prob=1), even for one lane!
+LANES = 2
+
+
+plt.figure()
+for i in range(1, LANES+1):
     # Simulate
     output = AbstractOutput()
-    sim = Simulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES,dtype=int)*1)
-    prob = 0.5
-    sim.manyCarsPP(p=prob, carcap=500)
+    sim = Simulation(output, dt=DT, lanes=i, cars=np.ones(i, dtype=int)*1)
+    prob = 1
+    sim.manyCarsPP(p=prob, carcap=100)
 
     # Data gathering
+    """
     ps.append(prob)
     average_times.append(np.mean(output.data[100:]))  # append av time and ignore first 100 cars
+    """
+    f.write(str(output.data) + "\n")
+    plt.plot(moving_average(output.data, 50), label=str(i)+" lanes")
 
     if ((i+1) % 5 == 0):
         print("I did loop", i+1)
-    
+
+plt.legend()
+plt.xlabel("Car Index")
+plt.ylabel("Time taken")
+plt.show()
+
+f.close()
+
+"""
 print("I finished!")
 #print(np.max(output.data))
 if (len(average_times) == 1 and False):
@@ -34,15 +51,14 @@ else:
     plt.plot(ps, average_times)
 plt.show()
 
-"""
-#plt.plot(moving_average(output.data,10))
-plt.hist(output.data,25,alpha=0.7)
+
+plt.plot(moving_average(output.data, 10))
+#plt.hist(output.data,25,alpha=0.7)
 plt.axvline(5000*3.6/120,color='r')
 plt.xlabel("Time (s)")
 plt.ylabel("Count")
 plt.show()
 """
-
 
 '''
 =========================================================
