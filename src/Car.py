@@ -133,9 +133,10 @@ class Car:
         if (infront is not None):
             delta_v = self.vel - infront.vel
             if (delta_v < 4):
-                factor = exp(delta_v-4) #when delta_v is small
-        
+                factor = exp(delta_v-4)  # when delta_v is small
+
         return 2 + (self.vel*1.6 + self.vel*delta_v/self.sqrt_ab)*factor
+        # return max(2, 2 + self.vel*1.6 + self.vel*delta_v/self.sqrt_ab)  # linear correction (easier to explain)
 
     def updateSqrtAB(self):
         self.sqrt_ab = 2*sqrt(self.a_max, self.b_max)

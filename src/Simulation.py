@@ -33,7 +33,7 @@ class Simulation:
         self.dt = dt
         self.output = output #File to write interesting data to
         self.frames = 0
-        self.RENDER = True
+        self.RENDER = False
         if (not self.RENDER):
             pygame.quit()
     

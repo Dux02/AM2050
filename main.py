@@ -2,6 +2,7 @@ from src.Simulation import Simulation
 from src.Output import AbstractOutput, FileOutput
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 
 def moving_average(a, n=3):
@@ -13,34 +14,38 @@ def moving_average(a, n=3):
 ps, average_times = [], []
 f = open('times.txt', 'a')
 DT = 0.1  # DT=0.2 gives crashes (at prob=1), even for one lane!
-LANES = 2
+LANES = 5
 
 
-plt.figure()
+saving_data = []
+# plt.figure()
 for i in range(1, LANES+1):
     # Simulate
     output = AbstractOutput()
-    sim = Simulation(output, dt=DT, lanes=i, cars=np.ones(i, dtype=int)*1)
+    sim = Simulation(output, dt=DT, lanes=i, cars=np.ones(i, dtype=int)*0)
     prob = 1
-    sim.manyCarsPP(p=prob, carcap=100)
+    sim.manyCarsPP(p=prob, carcap=1000)
 
     # Data gathering
+    saving_data.append(output.data)
     """
     ps.append(prob)
     average_times.append(np.mean(output.data[100:]))  # append av time and ignore first 100 cars
     """
-    f.write(str(output.data) + "\n")
-    plt.plot(moving_average(output.data, 50), label=str(i)+" lanes")
+    # plt.plot(moving_average(output.data, 50), label=str(i)+" lanes")
 
-    if ((i+1) % 5 == 0):
+    if ((i+1) % 1 == 0):
         print("I did loop", i+1)
-
+"""
 plt.legend()
 plt.xlabel("Car Index")
 plt.ylabel("Time taken")
 plt.show()
+"""
+print(saving_data)
+df = pd.DataFrame(np.array(saving_data))
+df.to_csv('data.csv', index=False)
 
-f.close()
 
 """
 print("I finished!")
