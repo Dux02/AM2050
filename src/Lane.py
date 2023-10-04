@@ -12,7 +12,7 @@ class Lane:
         self.finishedVehicles: list[Car] = []
         self.timeSinceLastCarGenerated = 0
 
-    def update(self, frame: int, dt: float) -> list[Car]:
+    def update(self, frame: int, dt: float, left_window_x=1, right_window_x=0) -> list[Car]:
         numOfCars = len(self.vehicles)
         if (numOfCars == 0):
             return
@@ -20,9 +20,13 @@ class Lane:
         carsOvertaking: list[Car] = []
         for i in range(numOfCars):
             if (i == numOfCars-1):
-                self.vehicles[i].update(frame, dt)
+                self.vehicles[i].update(frame, dt,
+                                        left_window_x=left_window_x, right_window_x=right_window_x)
+                                        # All this window_x shit is to only make beeps sound if the car is on screen xD
             else:
-                self.vehicles[i].update(frame, dt,self.vehicles[i+1])
+                self.vehicles[i].update(frame, dt, self.vehicles[i+1],
+                                        left_window_x=left_window_x, right_window_x=right_window_x)
+                                        # All this window_x shit is to only make beeps sound if the car is on screen xD
                 
             if (self.vehicles[i].overtaking != 0):
                     carsOvertaking.append(self.vehicles[i])

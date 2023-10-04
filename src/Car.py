@@ -11,7 +11,7 @@ V_MAX = 100 / 3.6  # 100 km/h
 V_DESIRED = V_MAX * 1.2  # m/s
 SIGMA = 2  # Standard deviation of the random initial velocities
 GRINDSET = 0.1  # Standard dev. of random tick updates
-GUSTAVO = 10  # Standard dev. of desired velocities (kph)
+GUSTAVO = 20  # Standard dev. of desired velocities (kph)
 V_MIN = 60 / 3.6
 CAR_LENGTH = 20
 PIXEL_PER_M = 10
@@ -36,7 +36,7 @@ class Car:
         self.prepissedvel = self.desiredvel
         self.debug = False
     
-    def update(self, frame: int, dt: float, infront: Union['Car', None] = None):
+    def update(self, frame: int, dt: float, infront: Union['Car', None] = None, left_window_x=1, right_window_x=0,):
         crash = False
         
         s = 5000
@@ -70,12 +70,11 @@ class Car:
                 # Can we overtake?
                 self.overtaking = 1
 
-            """
             # Alexander's whimsical beeping
-            if (infront.vel < 0.5*self.desiredvel and frame * dt % 10 == 0):
+            if (frame * dt % 1 == 0 and infront.vel < 0.5*self.desiredvel and left_window_x < self.x < right_window_x):
+                # All this window_x shit is to only make beeps sound if the car is on screen xD
                 beep = choice(beeps)
                 pygame.mixer.Sound.play(beep)
-            """
         
         # Do we want to merge?
         # if (self.vel > 0.8*self.desiredvel):
