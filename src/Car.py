@@ -22,7 +22,7 @@ class Car:
     b_max = 4.66 
     sqrt_ab = 2*sqrt(a_max*b_max)
     def __init__(self, x = 0,spawnframe=0):
-        self.desiredvel: float = abs(normal(V_DESIRED, GUSTAVO/3.6))  # Absolute value necessary to avoid negatives (even if unlikely!)
+        self.desiredvel: float = abs(normal(V_DESIRED, GUSTAVO/3.6))  # Absolute value necessary to avoid negatives
         if (self.desiredvel < V_MIN):
             self.desiredvel = V_MIN
         self.vel: float = abs(normal(self.desiredvel,SIGMA))
@@ -39,10 +39,131 @@ class Car:
     
     def update(self, dt: float, infront: Union['Car', None] = None):
         crash = False
-        
         s = 5000
-        """
-        # On matters of getting angry or not
+
+        # self.angerManagement(dt)
+        self.checkPassing()
+
+        if (infront is not None):
+            self.neighbours['front'] = infront
+            s = (infront.x - self.x - CAR_LENGTH)/PIXEL_PER_M  # s is in meters
+
+            # Do we want to overtake?
+            if self.wantToOvertake(infront, s):
+                # Can we overtake?
+                if self.canOvertake():
+                    self.updateNeighboursOnOvertake()
+                    return 1  # to let lane know we passed
+
+        if self.canMerge():
+            self.updateNeighboursOnMerge()
+            return -1  # let lane know we merged
+
+        
+        crash = self.advancedSpeed(dt, infront)
+        if (crash):
+            print(self.a, self.vel, self.x, self.s0)
+            
+        if (self.vel < 0):
+            self.vel = 0
+
+        self.x += self.vel*dt*PIXEL_PER_M  # x is in pixels, vel is in m/s
+
+        return 0
+
+    def updateNeighboursOnOvertake(self):
+        """Once we've overtaken, we need to update our neighbors"""
+        self.neighbours['rightfront'] = self.neighbours['front']
+        self.neighbours['rightback'] = self.neighbours['back']
+        self.neighbours['front'] = self.neighbours['leftfront']
+        self.neighbours['back'] = self.neighbours['leftback']
+
+        # leftfront and leftback are more complicated!
+        lf = self.neighbours['leftfront']
+        if lf.neighbours['leftback'] is not None and lf.neighbours['leftback'].x > self.x:
+            self.neighbours['leftfront'] = lf.neighbours['leftback']
+        elif lf.neighbours['leftfront'] is not None:
+            self.neighbours['leftfront'] = lf.neighbours['leftfront']
+        else:
+            self.neighbours['leftfront'] = None
+
+        lb = self.neighbours['leftback']
+        if lb.neighbours['leftfront'] is not None and lb.neighbours['leftfront'].x < self.x:
+            self.neighbours['leftback'] = lb.neighbours['leftfront']
+        elif lb.neighbours['leftback'] is not None:
+            self.neighbours['leftback'] = lb.neighbours['leftback']
+        else:
+            self.neighbours['leftfront'] = None
+
+    def updateNeighboursOnMerge(self):
+        self.neighbours['leftfront'] = self.neighbours['front']
+        self.neighbours['leftback'] = self.neighbours['back']
+        self.neighbours['front'] = self.neighbours['rightfront']
+        self.neighbours['back'] = self.neighbours['rightback']
+
+        # Again, rightfront and rightback are more complicated
+        # and I dont feel like typing it out rn :D
+
+    def canOvertake(self):
+        lf, lb = self.neighbours['leftfront'], self.neighbours['leftback']
+        for othercar in [lf, lb]:
+            if othercar is not None:
+                if self.x > othercar.x:
+                    delta_v = max(0, othercar.vel - self.vel)
+                else:
+                    delta_v = max(0, self.vel - othercar.vel)
+                SafetyDist = 4 * delta_v * PIXEL_PER_M + 2 * PIXEL_PER_M
+                if self.x - CAR_LENGTH - SafetyDist < othercar.x < self.x + CAR_LENGTH + SafetyDist:
+                    return False
+        if lb is not None and self.x - CAR_LENGTH - lb.x < 1.5 * lb.desiredDist(self) * PIXEL_PER_M:
+            return False
+
+        return True
+
+    def canMerge(self):
+        """Check whether we can merge depending on neighbours"""
+        rf, rb = self.neighbours['leftfront'], self.neighbours['rightfront']
+        for othercar in [rf, rb]:
+            if othercar is not None:
+                if self.x > othercar.x:
+                    delta_v = max(0, othercar.vel - self.vel)
+                else:
+                    delta_v = max(0, self.vel - othercar.vel)
+                SafetyDist = 4 * delta_v * PIXEL_PER_M + 2 * PIXEL_PER_M
+                if self.x - CAR_LENGTH - SafetyDist < othercar.x < self.x + CAR_LENGTH + SafetyDist:
+                    return False
+        if rf is not None and rf.x - CAR_LENGTH - self.x < 1.5 * max(self.desiredDist(rf), 0) * PIXEL_PER_M:
+            return False
+
+        return True
+
+    def checkPassing(self):
+        """Check whether we've passed anyone and update neighbours"""
+        # (should we then also check if someone passed us?, if so we might only
+        # have to check every 2 lanes or something like that)
+        if self.neighbours['leftfront'].x < self.x:
+            # Others' new neighbours
+            self.neighbours['leftfront'].neighbours['rightfront'] = self
+            self.neighbours['leftfront'].neighbours['rightback'] = self.neighbours['back']
+
+            # Our new neighbors:
+            self.neighbours['leftback'] = self.neighbours['leftfront']
+            self.neighbours['leftfront'] = self.neighbours['leftfront'].neighbours['front']  # could be None
+        if self.neighbours['rightfront'].x < self.x:
+            # Others' new neighbours
+            self.neighbours['rightfront'].neighbours['leftfront'] = self
+            self.neighbours['rightfront'].neighbours['leftback'] = self.neighbours['back']
+
+            # Our new neighbors:
+            self.neighbours['rightback'] = self.neighbours['rightfront']
+            self.neighbours['rightfront'] = self.neighbours['rightfront'].neighbours['front']  # could be None
+
+    def wantToOvertake(self, infront: 'Car', s: float):
+        """Checks whether we are in the mood to pass this grandma in front"""
+        return s < 1.2 * self.s0 and self.vel < self.desiredvel and self.desiredvel > infront.vel
+
+    def angerManagement(self, dt):
+        """On matters of getting angry or not"""
         if (self.vel < self.desiredvel*0.8 and not self.pissed):
             self.waited += 0  # We're waiting
         elif (self.pissed):
@@ -59,29 +180,6 @@ class Car:
             self.pissed = False
             self.desiredvel = self.prepissedvel
             self.a_max /= 10
-        """
-        self.overtaking = -1
-        
-        if (infront is not None):
-            s = (infront.x - self.x - CAR_LENGTH)/PIXEL_PER_M  # s is in meters
-            delta_v = self.vel - infront.vel
-            # Do we want to overtake?
-            # OVTF = 1.2, the factor time s0. Note this is similar to the previous code w/ a min. 3 second headway instead.
-            if (s < 1.2 * self.s0 and self.vel < self.desiredvel and self.desiredvel > infront.vel):
-                # Can we overtake?
-                self.overtaking = 1
-        
-        # Do we want to merge?
-        # if (self.vel > 0.8*self.desiredvel):
-        #     self.overtaking = -1
-        
-        crash = self.advancedSpeed(dt, infront)
-        if (crash):
-            print(self.a, self.vel, self.x, self.s0)
-            
-        if (self.vel < 0):
-            self.vel = 0
-        self.x += self.vel*dt*PIXEL_PER_M  # x is in pixels, vel is in m/s
 
     def normalSpeed(self,sigma: float):
         prev_vel = self.vel
@@ -153,6 +251,10 @@ class Car:
                 beep = choice(beeps)
                 pygame.mixer.Sound.play(beep)
         return
+
+
+
+
 
 
 

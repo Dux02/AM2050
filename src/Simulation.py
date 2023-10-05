@@ -55,7 +55,7 @@ class Simulation:
                 theLastCar = None
                 for othercar in desiredLane.vehicles:
                     if (othercar.x - car.x > 1000*PIXEL_PER_M):  # TODO: Maybe we can put an abs term here?
-                        break # No need to waste resources and check cars beyond 1km.
+                        break  # No need to waste resources and check cars beyond 1km.
                     
                     delta_v = car.vel
                     if (car.x > othercar.x): 
@@ -74,7 +74,7 @@ class Simulation:
                     # (see: OVTF in Car.py) it's ok.
                     # Additionally: we abuse Python's lazy evaluation of these expressions. If any of the first return false, desiredDist isn't called
                     if (car.overtaking == -1 and othercar.x > car.x and 
-                        othercar.x - CAR_LENGTH - car.x < 1.5*max(car.desiredDist(othercar),0)*PIXEL_PER_M):
+                        othercar.x - CAR_LENGTH - car.x < 1.5*max(car.desiredDist(othercar), 0)*PIXEL_PER_M):
                         #Prevents merging when the car in front will cause us to hit our brakes (quite hard!)
                         canOvertake = False
                         break
