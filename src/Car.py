@@ -35,7 +35,7 @@ class Car:
         self.pissed = False
         self.prepissedvel = self.desiredvel
         self.debug = False
-        self.neighbours = {'front': None, 'back':None, 'leftfront': None, 'leftback': None, 'rightfront': None, 'rightback': None}
+        self.neighbours = {'front': None, 'back': None, 'leftfront': None, 'leftback': None, 'rightfront': None, 'rightback': None}
     
     def update(self, dt: float, infront: Union['Car', None] = None):
         crash = False
