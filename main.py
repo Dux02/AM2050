@@ -1,6 +1,5 @@
 from src.Simulation import Simulation
-from src.Output import AbstractOutput, FileOutput
-import matplotlib.pyplot as plt
+from src.Output import AbstractOutput
 import numpy as np
 import pandas as pd
 
@@ -13,8 +12,8 @@ def moving_average(a, n=3):
 
 ps, average_times = [], []
 f = open('times.txt', 'a')
-DT = 0.1  # DT=0.2 gives crashes (at prob=1), even for one lane!
-LANES = 5
+DT = 0.005  # DT=0.2 gives crashes (at prob=1), even for one lane!
+LANES = 3
 
 
 saving_data = []
@@ -22,9 +21,9 @@ saving_data = []
 for i in range(1, LANES+1):
     # Simulate
     output = AbstractOutput()
-    sim = Simulation(output, dt=DT, lanes=i, cars=np.ones(i, dtype=int)*0)
-    prob = 1
-    sim.manyCarsPP(p=prob, carcap=1000)
+    sim = Simulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES, dtype=int)*0)
+    prob = 10
+    sim.manyCarsPP(p=prob, carcap=2000)
 
     # Data gathering
     saving_data.append(output.data)
@@ -34,8 +33,8 @@ for i in range(1, LANES+1):
     """
     # plt.plot(moving_average(output.data, 50), label=str(i)+" lanes")
 
-    if ((i+1) % 1 == 0):
-        print("I did loop", i+1)
+    if (i % 1 == 0):
+        print("I did loop", i)
 """
 plt.legend()
 plt.xlabel("Car Index")
@@ -46,7 +45,7 @@ print(saving_data)
 df = pd.DataFrame(np.array(saving_data))
 df.to_csv('data.csv', index=False)
 
-
+print('hij denk hij is la primo maar hij heeft')
 """
 print("I finished!")
 #print(np.max(output.data))

@@ -4,24 +4,25 @@ from .Output import AbstractOutput
 from numpy import mean
 import pygame
 
+RENDER = True
 
-pygame.init()
 WIDTH, HEIGHT = 1200, 600  # 1500, 720 blas computer
-window = pygame.display.set_mode((WIDTH, HEIGHT))
-font = pygame.font.Font("freesansbold.ttf",21)
-font2 = pygame.font.Font("freesansbold.ttf",10)
 red = (255, 0, 0)
 green = (0, 255, 0)
 blue = (0, 0, 255)
 white = (255, 255, 255)
 grey = (128, 128, 128)
 black = (0, 0, 0)
-window.fill(white)
 temp = max(V_MIN, V_DESIRED - 3*GUSTAVO/3.6)
-print(temp)
 # B is meters per second: A converts m/s to 0-255
 A, B = (255-0)/(V_DESIRED + 3*GUSTAVO/3.6 - temp), -temp
 
+if RENDER:
+    pygame.init()
+    window = pygame.display.set_mode((WIDTH, HEIGHT))
+    window.fill(white)
+    font = pygame.font.Font("freesansbold.ttf",21)
+    font2 = pygame.font.Font("freesansbold.ttf",10)
 
 class Simulation:
     image = pygame.image.load('media/auto.png')
@@ -31,16 +32,17 @@ class Simulation:
     def __init__(self, output: AbstractOutput, dt:float = 1, lanes: int = 1, cars: list[int] = [1]):
         self.lanes: list[Lane] = [Lane(cars[i]) for i in range(lanes)]
         self.dt = dt
-        self.output = output #File to write interesting data to
+        self.output = output  # File to write interesting data to
         self.frames = 0
-        self.RENDER = False
-        if (not self.RENDER):
+        if (not RENDER):
             pygame.quit()
     
     def update(self):
         for lane in self.lanes:
             i = self.lanes.index(lane)
-            carsOvertaking = lane.update(self.frames, self.dt)
+            carsOvertaking = lane.update(self.frames, self.dt,
+                                         left_window_x=self.begin_draw, right_window_x=self.begin_draw+WIDTH)
+                                        # All this window_x shit is to only make beeps sound if the car is on screen xD
             if (carsOvertaking is None):
                 continue
             for car in carsOvertaking:
@@ -54,7 +56,7 @@ class Simulation:
                     scale = 2
                 theLastCar = None
                 for othercar in desiredLane.vehicles:
-                    if (othercar.x - car.x > 1000*PIXEL_PER_M): # TODO: Maybe we can put an abs term here?
+                    if (othercar.x - car.x > 1000*PIXEL_PER_M):  # TODO: Maybe we can put an abs term here?
                         break # No need to waste resources and check cars beyond 1km.
                     
                     delta_v = car.vel
@@ -90,7 +92,7 @@ class Simulation:
                 car.overtaking = 0
             
         self.frames += 1
-        if (self.RENDER):
+        if RENDER:
             self.render()
         # print(self.getAvgSpeed()*3.6)
         
@@ -189,7 +191,7 @@ class Simulation:
             if event.type == pygame.QUIT:
                 pygame.display.quit()
                 pygame.quit()    
-                self.RENDER = False
+                RENDER = False
             if event.type == pygame.WINDOWEXPOSED:
                 # print("OK")
                 pass
