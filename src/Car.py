@@ -1,5 +1,5 @@
 # Car class
-from typing import Union
+from typing import Union, Tuple
 from numpy.random import normal
 from random import choice
 from numpy import sqrt, sign, exp
@@ -36,7 +36,7 @@ class Car:
         self.prepissedvel = self.desiredvel
         self.debug = False
     
-    def update(self, frame: int, dt: float, infront: Union['Car', None] = None, left_window_x=1, right_window_x=0,):
+    def update(self, dt: float, infront: Union['Car', None] = None):
         crash = False
         
         s = 5000
@@ -69,12 +69,6 @@ class Car:
             if (s < 1.2 * self.s0 and self.vel < self.desiredvel and self.desiredvel > infront.vel):
                 # Can we overtake?
                 self.overtaking = 1
-
-            # Alexander's whimsical beeping
-            if (frame * dt % 1 == 0 and infront.vel < 0.5*self.desiredvel and left_window_x < self.x < right_window_x):
-                # All this window_x shit is to only make beeps sound if the car is on screen xD
-                beep = choice(beeps)
-                pygame.mixer.Sound.play(beep)
         
         # Do we want to merge?
         # if (self.vel > 0.8*self.desiredvel):
@@ -140,7 +134,24 @@ class Car:
     def updateSqrtAB(self):
         self.sqrt_ab = 2*sqrt(self.a_max, self.b_max)
             
-       
+    # Alexander's whimsical beeping            
+    def beep(self,timestamp: float, infront: 'Car', windowspecs: Tuple[int,int] = (0,1)):
+        """
+        The function plays a random beep sound if the car in front is too slow and the car is on the screen.
+        
+        :param timestamp: The timestamp parameter is a float value representing the current second (frame*dt). It is
+        used to determine when to trigger the beep sound
+        :type timestamp: float
+        :param windowspecs: The `windowspecs` parameter is a tuple that specifies the range of x-values
+        within which the beep sound should be played. It has two elements: `windowspecs[0]` represents
+        the lower bound of the range, and `windowspecs[1]` represents the upper bound.
+        :type windowspecs: Tuple[int,int]
+        """
+        
+        if (timestamp % 1 == 0 and infront.vel < 0.5*self.desiredvel and windowspecs[0] < self.x < windowspecs[1]):
+                beep = choice(beeps)
+                pygame.mixer.Sound.play(beep)
+        return
 
 
 

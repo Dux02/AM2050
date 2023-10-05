@@ -40,9 +40,7 @@ class Simulation:
     def update(self):
         for lane in self.lanes:
             i = self.lanes.index(lane)
-            carsOvertaking = lane.update(self.frames, self.dt,
-                                         left_window_x=self.begin_draw, right_window_x=self.begin_draw+WIDTH)
-                                        # All this window_x shit is to only make beeps sound if the car is on screen xD
+            carsOvertaking = lane.update(self.dt)
             if (carsOvertaking is None):
                 continue
             for car in carsOvertaking:
@@ -138,8 +136,11 @@ class Simulation:
         CAR_HEIGHT = 10
         for lane in self.lanes:
             lane_num = self.lanes.index(lane)
-            for car in lane.vehicles:
+            for i in range(len(lane.vehicles)):
+                car = lane.vehicles[i]
                 if (0 < car.x - self.begin_draw < WIDTH):
+                    if (i < len(lane.vehicles) - 1):
+                        car.beep(self.frames*self.dt,lane.vehicles[i+1],(self.begin_draw, self.begin_draw + WIDTH))
                     draw_x = car.x - self.begin_draw
                     draw_y = empty_space_above + (LANE_HEIGHT+LINE_HEIGHT) * lane_num + int((LANE_HEIGHT-CAR_HEIGHT)/2)
 
