@@ -161,3 +161,7 @@ cython_debug/
 
 times.txt
 .vs/
+.vs
+.vscode
+.vscode/
+data.csv
