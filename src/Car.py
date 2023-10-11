@@ -37,15 +37,15 @@ class Car:
         self.debug = False
         self.neighbours = {'front': None, 'back': None, 'leftfront': None, 'leftback': None, 'rightfront': None, 'rightback': None}
     
-    def update(self, dt: float, infront: Union['Car', None] = None):
+    def update(self, dt: float):
         crash = False
         s = 5000
 
         # self.angerManagement(dt)
         self.checkPassing()
 
-        if (infront is not None):
-            self.neighbours['front'] = infront
+        infront = self.neighbours['front']
+        if infront is not None:
             s = (infront.x - self.x - CAR_LENGTH)/PIXEL_PER_M  # s is in meters
 
             # Do we want to overtake?
@@ -53,18 +53,17 @@ class Car:
                 # Can we overtake?
                 if self.canOvertake():
                     self.updateNeighboursOnOvertake()
-                    return 1  # to let lane know we passed
+                    return 1  # to let lane know we passed, to put self in another lane
 
         if self.canMerge():
             self.updateNeighboursOnMerge()
-            return -1  # let lane know we merged
+            return -1  # let lane know we merged, to put self in another lane
 
-        
         crash = self.advancedSpeed(dt, infront)
-        if (crash):
+        if crash:
             print(self.a, self.vel, self.x, self.s0)
             
-        if (self.vel < 0):
+        if self.vel < 0:
             self.vel = 0
 
         self.x += self.vel*dt*PIXEL_PER_M  # x is in pixels, vel is in m/s
