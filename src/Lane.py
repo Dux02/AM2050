@@ -82,7 +82,7 @@ class Lane:
         If it successfully generates a car, it will return true, otherwise false.
         It will not spawn a car if there's not enough space to do so, regardless of the time since last spawn
         '''
-        if (random() < p):
+        if random() < p:
             if len(self.vehicles) == 0:
                 self.vehicles.insert(0, Car(spawnframe=frame))
                 self.timeSinceLastCarGenerated = frame
