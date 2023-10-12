@@ -76,6 +76,7 @@ class Car:
         
         crash = self.advancedSpeed(dt, infront)
         if (crash):
+            breakpoint()
             print(self.a, self.vel, self.x, self.s0)
             
         if (self.vel < 0):

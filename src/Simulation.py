@@ -24,6 +24,25 @@ if RENDER:
     font = pygame.font.Font("freesansbold.ttf",21)
     font2 = pygame.font.Font("freesansbold.ttf",10)
 
+
+def areSafeDist(main_car: 'Car', secondary_car: 'Car', overtaking=1):
+    """Returns whether main_car can change into secondary_car's lane,
+    based purely on difference in velocity, i.e. does not regard whether
+    either car will have to brake hard once lane has been changed"""
+    if main_car.x > secondary_car.x:
+        delta_v = max(0, secondary_car.vel - main_car.vel)
+    else:
+        delta_v = max(0, main_car.vel - secondary_car.vel)
+
+    scale = 2
+    if overtaking == -1:
+        scale = 1
+
+    SafetyDist = scale * 3 * delta_v * PIXEL_PER_M + 2 * PIXEL_PER_M
+    if main_car.x - CAR_LENGTH - SafetyDist < secondary_car.x < main_car.x + CAR_LENGTH + SafetyDist:
+        return False
+    return True
+
 class Simulation:
     image = pygame.image.load('media/auto.png')
     begin_draw = WIDTH - WIDTH
@@ -44,48 +63,83 @@ class Simulation:
             if (carsOvertaking is None):
                 continue
             for car in carsOvertaking:
-                if (i - car.overtaking == -1 or i - car.overtaking == len(self.lanes)):
-                    #car.overtaking = 0
+                if i - car.overtaking == -1 or i - car.overtaking >= len(self.lanes):
+                    # We cant merge out of the road or overtake into the grass
+                    car.overtaking = 0
                     continue
+
                 desiredLane = self.lanes[i-car.overtaking]
                 canOvertake = True
-                scale = 1
-                if (car.overtaking == 1):
-                    scale = 2
-                theLastCar = None
-                for othercar in desiredLane.vehicles:
-                    if (othercar.x - car.x > 1000*PIXEL_PER_M):  # TODO: Maybe we can put an abs term here?
-                        break # No need to waste resources and check cars beyond 1km.
-                    
-                    delta_v = car.vel
-                    if (car.x > othercar.x): 
-                        delta_v = max(0, othercar.vel - car.vel)
+
+                checkList = desiredLane.vehicles
+                desiredIndex = None  # later becomes an int
+
+                if len(checkList) == 0:
+                    # We can always go into an empty lane :)
+                    pass
+                else:
+                    if len(checkList) == 1:
+                        # Perform all checks immediately to the one car
+                        otherCar = checkList[0]
+                        if not areSafeDist(car, otherCar, car.overtaking):
+                            # If there is a car, check whether we can overtake it.
+                            canOvertake = False
+                        elif (car.overtaking == 1 and car.x > otherCar.x
+                                    and car.x - otherCar.x - CAR_LENGTH < 1.5 * otherCar.desiredDist(car)):
+                            # Don't overtake if it will cause the car behind to hit his brakes hard
+                            canOvertake = False
+                        elif (car.overtaking == -1 and car.x < otherCar.x
+                                and otherCar.x - car.x - CAR_LENGTH < 1.5 * car.desiredDist(otherCar)):
+                            # Prevents merging when the car in front will cause us to hit our brakes hard
+                            canOvertake = False
                     else:
-                        delta_v = max(0, car.vel - othercar.vel)
-                    SafetyDist = scale * 2 * delta_v * PIXEL_PER_M + 2*PIXEL_PER_M
-                    # NOTICE: I removed the 2* and 3* factors here bc i feel they're inconsistent
-                    if (car.x - CAR_LENGTH - SafetyDist < othercar.x < car.x + CAR_LENGTH + SafetyDist):
-                        canOvertake = False
-                        break
-                    
-                    if (car.overtaking == 1 and othercar.x < car.x):
-                        theLastCar = othercar
-                    # NOTICE: The 2*s0 factor is a bit arbitrary. As long as its > car's overtaking factor 
-                    # (see: OVTF in Car.py) it's ok.
-                    # Additionally: we abuse Python's lazy evaluation of these expressions. If any of the first return false, desiredDist isn't called
-                    if (car.overtaking == -1 and othercar.x > car.x and 
-                        othercar.x - CAR_LENGTH - car.x < 1.5*max(car.desiredDist(othercar),0)*PIXEL_PER_M):
-                        #Prevents merging when the car in front will cause us to hit our brakes (quite hard!)
-                        canOvertake = False
-                        break
-                if (canOvertake and car.overtaking == 1 and theLastCar is not None and 
-                    car.x - CAR_LENGTH - theLastCar.x < 1.5*theLastCar.desiredDist(car)*PIXEL_PER_M):
-                    canOvertake = False
-                if (canOvertake and car.x < lane.length):
-                    #print("Im mergin here",car.x)
-                    desiredLane.vehicles.append(car)
+                        # We're looking for the car in desiredLane to the left-back of car,
+                        # and we'll save its index @ desiredIndex
+                        i = 0
+                        while len(checkList) > 1 and canOvertake:
+                            middleIndex = (len(checkList)-1) // 2  # Rounds down, but remember index starts @ 0
+                            otherCar = checkList[middleIndex]
+                            # print(checkList)
+                            # i += 1
+                            # if i == 30:
+                            #     breakpoint()
+                            if otherCar.x < car.x < checkList[middleIndex+1].x:
+                                # Done, found our car!
+                                break
+                            elif otherCar.x > car.x:
+                                # Good we don't have to check above otherCar
+                                checkList = checkList[:middleIndex+1]
+                            else:
+                                checkList = checkList[middleIndex+1:]
+                        desiredIndex = middleIndex
+                        # TODO: check whether this actually is finding the right car
+                        if canOvertake:
+                            for i in [desiredIndex, desiredIndex+1]:
+                                otherCar = desiredLane.vehicles[i]
+                                if areSafeDist(car, otherCar):
+                                    if (car.overtaking == 1 and i == desiredIndex
+                                            and car.x-otherCar.x-CAR_LENGTH < 1.5*otherCar.desiredDist(car)):
+                                        # Don't overtake if it will cause the car behind to hit his brakes hard
+                                        canOvertake = False
+                                        break
+
+                                    if (car.overtaking == -1 and i == desiredIndex+1
+                                            and otherCar.x-car.x-CAR_LENGTH < 1.5*car.desiredDist(otherCar)):
+                                        # Prevents merging when the car in front will cause us to hit our brakes hard
+                                        canOvertake = False
+                                        break
+                                else:
+                                    canOvertake = False
+                                    break
+
+                if canOvertake and car.x < lane.length:
+                    if desiredIndex is None:
+                        # desiredLane is empty
+                        desiredLane.vehicles.insert(0, car)
+                    else:
+                        desiredLane.vehicles.insert(desiredIndex+1, car)
                     lane.vehicles.remove(car)
-                    desiredLane.vehicles.sort(key=lambda c: c.x)
+                    lane.vehicles.sort(key=lambda c: c.x)
                     
                 car.overtaking = 0
             
@@ -93,7 +147,7 @@ class Simulation:
         if RENDER:
             self.render()
         # print(self.getAvgSpeed()*3.6)
-        
+
     def getAvgSpeed(self) -> float:
         speeds: list[float] = []
         for lane in self.lanes:
@@ -139,8 +193,8 @@ class Simulation:
             for i in range(len(lane.vehicles)):
                 car = lane.vehicles[i]
                 if (0 < car.x - self.begin_draw < WIDTH):
-                    if (i < len(lane.vehicles) - 1):
-                        car.beep(self.frames*self.dt,lane.vehicles[i+1],(self.begin_draw, self.begin_draw + WIDTH))
+                    # if (i < len(lane.vehicles) - 1):
+                    #     car.beep(self.frames*self.dt,lane.vehicles[i+1],(self.begin_draw, self.begin_draw + WIDTH))
                     draw_x = car.x - self.begin_draw
                     draw_y = empty_space_above + (LANE_HEIGHT+LINE_HEIGHT) * lane_num + int((LANE_HEIGHT-CAR_HEIGHT)/2)
 
@@ -171,8 +225,8 @@ class Simulation:
                             
                     pygame.draw.rect(window, color, pygame.Rect(draw_x, draw_y, CAR_LENGTH, CAR_HEIGHT))
                     # window.blit(self.image,(draw_x, draw_y))
-                    acc_text = font2.render(str(round(car.vel*3.6)), True, white, color)
-                    window.blit(acc_text, (draw_x,draw_y))
+                    acc_text = font2.render(str(round(car.a,1)), True, white, color)
+                    window.blit(acc_text, (draw_x, draw_y))
 
         # Draw buttons and check if there being hovered over
         pygame.draw.rect(window, red, pygame.Rect(0, HEIGHT-40, 40, 40))
@@ -271,7 +325,4 @@ class Simulation:
                 self.output.save(data_bit)
 
         return
-
-
-
 
