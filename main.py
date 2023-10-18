@@ -13,7 +13,7 @@ def moving_average(a, n=3):
 ps, average_times = [], []
 f = open('times.txt', 'a')
 DT = 0.005  # DT=0.2 gives crashes (at prob=1), even for one lane!
-LANES = 3
+LANES = 2
 
 
 saving_data = []

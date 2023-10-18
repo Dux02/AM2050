@@ -30,7 +30,18 @@ class Simulation:
     # dt given in seconds
 
     def __init__(self, output: AbstractOutput, dt:float = 1, lanes: int = 1, cars: list[int] = [1]):
-        self.lanes: list[Lane] = [Lane(cars[i]) for i in range(lanes)]
+        self.lanes: list[Lane] = [Lane() for i in range(lanes)]
+        for i in range(lanes): # Hook up the lanes to each other
+            if (i > 0):
+                self.lanes[i].rightLane = self.lanes[i-1]
+            if (i < lanes - 1):
+                self.lanes[i].leftLane = self.lanes[i+1]
+        
+        for i in range(lanes): # Initialize the cars in each lane - must come after lane-linking so that neighbours are correct
+            self.lanes[i].linkMarkers()
+            self.lanes[i].initLinspacedCars(cars[i])
+            
+        
         self.dt = dt
         self.output = output  # File to write interesting data to
         self.frames = 0
@@ -39,55 +50,7 @@ class Simulation:
     
     def update(self):
         for lane in self.lanes:
-            i = self.lanes.index(lane)
-            carsOvertaking = lane.update(self.dt)
-            if (carsOvertaking is None):
-                continue
-            for car in carsOvertaking:
-                if (i - car.overtaking == -1 or i - car.overtaking == len(self.lanes)):
-                    #car.overtaking = 0
-                    continue
-                desiredLane = self.lanes[i-car.overtaking]
-                canOvertake = True
-                scale = 1
-                if (car.overtaking == 1):
-                    scale = 2
-                theLastCar = None
-                for othercar in desiredLane.vehicles:
-                    if (othercar.x - car.x > 1000*PIXEL_PER_M):  # TODO: Maybe we can put an abs term here?
-                        break  # No need to waste resources and check cars beyond 1km.
-                    
-                    delta_v = car.vel
-                    if (car.x > othercar.x): 
-                        delta_v = max(0, othercar.vel - car.vel)
-                    else:
-                        delta_v = max(0, car.vel - othercar.vel)
-                    SafetyDist = scale * 2 * delta_v * PIXEL_PER_M + 2*PIXEL_PER_M
-                    # NOTICE: I removed the 2* and 3* factors here bc i feel they're inconsistent
-                    if (car.x - CAR_LENGTH - SafetyDist < othercar.x < car.x + CAR_LENGTH + SafetyDist):
-                        canOvertake = False
-                        break
-                    
-                    if (car.overtaking == 1 and othercar.x < car.x):
-                        theLastCar = othercar
-                    # NOTICE: The 2*s0 factor is a bit arbitrary. As long as its > car's overtaking factor 
-                    # (see: OVTF in Car.py) it's ok.
-                    # Additionally: we abuse Python's lazy evaluation of these expressions. If any of the first return false, desiredDist isn't called
-                    if (car.overtaking == -1 and othercar.x > car.x and 
-                        othercar.x - CAR_LENGTH - car.x < 1.5*max(car.desiredDist(othercar), 0)*PIXEL_PER_M):
-                        #Prevents merging when the car in front will cause us to hit our brakes (quite hard!)
-                        canOvertake = False
-                        break
-                if (canOvertake and car.overtaking == 1 and theLastCar is not None and 
-                    car.x - CAR_LENGTH - theLastCar.x < 1.5*theLastCar.desiredDist(car)*PIXEL_PER_M):
-                    canOvertake = False
-                if (canOvertake and car.x < lane.length):
-                    #print("Im mergin here",car.x)
-                    desiredLane.vehicles.append(car)
-                    lane.vehicles.remove(car)
-                    desiredLane.vehicles.sort(key=lambda c: c.x)
-                    
-                car.overtaking = 0
+            lane.update(self.dt)
             
         self.frames += 1
         if RENDER:
