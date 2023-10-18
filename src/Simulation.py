@@ -68,6 +68,8 @@ class Simulation:
                     car.overtaking = 0
                     continue
 
+                test = 3
+
                 desiredLane = self.lanes[i-car.overtaking]
                 canOvertake = True
 
