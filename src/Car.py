@@ -3,6 +3,7 @@ from typing import Union, Tuple
 from numpy.random import normal
 from random import choice
 from numpy import sqrt, sign, exp
+from numbers import Number
 
 import pygame
 pygame.mixer.init()
@@ -76,7 +77,6 @@ class Car:
         
         crash = self.advancedSpeed(dt, infront)
         if (crash):
-            breakpoint()
             print(self.a, self.vel, self.x, self.s0)
             
         if (self.vel < 0):
@@ -132,6 +132,22 @@ class Car:
         return 2 + (self.vel*1.6 + self.vel*delta_v/self.sqrt_ab)*factor
         # return max(2, 2 + self.vel*1.6 + self.vel*delta_v/self.sqrt_ab)  # linear correction (easier to explain)
 
+    def inDist(self, dist: Union[float, Tuple[float,float]], othercar: 'Car') -> bool:
+        """The function checks if another car is within a certain distance range from the current car.
+
+        Args:
+            dist (float | (float, float)): The parameter `dist` can be either a float or a tuple of two floats
+                in which case dist[0] is the distance behind current car, and dist[1] in front
+            othercar (Car): The car to check if it is in the distance range
+
+        Returns:
+            bool: True if in the distance range, False otherwise
+        """ 
+        if (isinstance(dist,Number)):
+            return self.x - CAR_LENGTH - dist < othercar.x < self.x + CAR_LENGTH + dist
+        else:
+            return self.x - CAR_LENGTH - dist[0] < othercar.x < self.x + CAR_LENGTH + dist[1]
+    
     def updateSqrtAB(self):
         self.sqrt_ab = 2*sqrt(self.a_max, self.b_max)
             

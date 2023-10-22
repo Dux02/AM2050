@@ -11,6 +11,7 @@ class Lane:
         self.vehicles: list[Car] = [Car(xcoords[i]) for i in range(cars)]
         self.finishedVehicles: list[Car] = []
         self.timeSinceLastCarGenerated = 0
+        self.maxvel = 120 / 3.6
 
     def update(self, dt: float) -> list[Car]:
         numOfCars = len(self.vehicles)
@@ -22,6 +23,11 @@ class Lane:
             if (i == numOfCars-1):
                 self.vehicles[i].update(dt)
             else:
+                if (self.vehicles[i+1].x < self.vehicles[i].x):
+                    wrongCar = self.vehicles[i+1]
+                    self.vehicles.pop(i+1)
+                    debug = self.findCarsAround(wrongCar.x)
+                    print(debug)
                 self.vehicles[i].update(dt, self.vehicles[i+1])
                 
             if (self.vehicles[i].overtaking != 0):
@@ -53,6 +59,31 @@ class Lane:
         if len(speeds) == 0:
             speeds = [0]
         return mean(speeds)
+    
+    def findCarsAround(self,x): 
+        # We're looking for the car in desiredLane to the left-back of car,
+        # and we'll save its index @ desiredIndex
+        checkList = self.vehicles
+        if (len(checkList)==0):
+            return [None, None]
+        i = 0
+        if (checkList[0].x > x):
+            return [0,0]
+        if (checkList[-1].x < x):
+            return [-1,-1]
+        while len(checkList) > 1:
+            middleIndex = (len(checkList)-1) // 2  # Rounds down, but remember index starts @ 0
+            if checkList[middleIndex].x < x < checkList[middleIndex+1].x:
+                i += middleIndex
+                # Done, found our car!
+                break
+            elif checkList[middleIndex].x > x:
+                # Good we don't have to check above otherCar
+                checkList = checkList[:middleIndex+1]
+            else:
+                i += middleIndex+1
+                checkList = checkList[middleIndex+1:]
+        return [i, i+1]
     
     def generateCarT(self,timestep:int,frame:int) -> bool:
         '''

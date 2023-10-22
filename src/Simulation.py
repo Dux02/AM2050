@@ -68,80 +68,71 @@ class Simulation:
                     car.overtaking = 0
                     continue
 
-                test = 3
-
-                desiredLane = self.lanes[i-car.overtaking]
+                desiredLane: Lane = self.lanes[i-car.overtaking]
                 canOvertake = True
 
-                checkList = desiredLane.vehicles
-                desiredIndex = None  # later becomes an int
-
-                if len(checkList) == 0:
+                if len(desiredLane.vehicles) == 0:
                     # We can always go into an empty lane :)
-                    pass
-                else:
-                    if len(checkList) == 1:
-                        # Perform all checks immediately to the one car
-                        otherCar = checkList[0]
-                        if not areSafeDist(car, otherCar, car.overtaking):
-                            # If there is a car, check whether we can overtake it.
-                            canOvertake = False
-                        elif (car.overtaking == 1 and car.x > otherCar.x
-                                    and car.x - otherCar.x - CAR_LENGTH < 1.5 * otherCar.desiredDist(car)):
+                    desiredLane.vehicles.append(car)
+                    lane.vehicles.remove(car)
+                    continue
+                
+                if len(desiredLane.vehicles) == 1:
+                    # Perform all checks immediately to the one car
+                    otherCar = desiredLane.vehicles[0]
+                    if not areSafeDist(car, otherCar, car.overtaking):
+                        # If there is a car, check whether we can overtake it.
+                        canOvertake = False
+                        continue
+                    elif (car.overtaking == 1 and car.x > otherCar.x
+                                and car.x - otherCar.x - CAR_LENGTH < 1.5 * 120 / (3.6*car.desiredvel) * otherCar.desiredDist(car)):
+                        # Don't overtake if it will cause the car behind to hit his brakes hard
+                        canOvertake = False
+                        continue
+                    elif (car.overtaking == -1 and car.x < otherCar.x
+                            and otherCar.x - car.x - CAR_LENGTH < 0.7 * car.desiredDist(otherCar)):
+                        # Prevents merging when the car in front will cause us to hit our brakes hard
+                        canOvertake = False
+                        continue
+                    if (car.x > otherCar.x):
+                        desiredLane.vehicles.append(car)
+                    else:
+                        desiredLane.vehicles.insert(0,car)
+                    lane.vehicles.remove(car)
+                    continue
+                
+                indices = desiredLane.findCarsAround(car.x)
+                if (indices[1] != -1 and desiredLane.vehicles[indices[1]].x < car.x):
+                    print("Hmmmmm My esteemed establishment dislikes this")
+                for j in indices:
+                    otherCar = desiredLane.vehicles[j]
+                    if areSafeDist(car, otherCar):
+                        if (car.overtaking == 1 and j == indices[0]
+                                and car.x-otherCar.x-CAR_LENGTH < 1.5 * 120 / (3.6*car.desiredvel) * otherCar.desiredDist(car)):
                             # Don't overtake if it will cause the car behind to hit his brakes hard
                             canOvertake = False
-                        elif (car.overtaking == -1 and car.x < otherCar.x
-                                and otherCar.x - car.x - CAR_LENGTH < 1.5 * car.desiredDist(otherCar)):
+                            break
+
+                        if (car.overtaking == -1 and j == indices[1]
+                                and otherCar.x-car.x-CAR_LENGTH < 0.7*car.desiredDist(otherCar)):
                             # Prevents merging when the car in front will cause us to hit our brakes hard
                             canOvertake = False
+                            break
                     else:
-                        # We're looking for the car in desiredLane to the left-back of car,
-                        # and we'll save its index @ desiredIndex
-                        i = 0
-                        while len(checkList) > 1 and canOvertake:
-                            middleIndex = (len(checkList)-1) // 2  # Rounds down, but remember index starts @ 0
-                            otherCar = checkList[middleIndex]
-                            # print(checkList)
-                            # i += 1
-                            # if i == 30:
-                            #     breakpoint()
-                            if otherCar.x < car.x < checkList[middleIndex+1].x:
-                                # Done, found our car!
-                                break
-                            elif otherCar.x > car.x:
-                                # Good we don't have to check above otherCar
-                                checkList = checkList[:middleIndex+1]
-                            else:
-                                checkList = checkList[middleIndex+1:]
-                        desiredIndex = middleIndex
-                        # TODO: check whether this actually is finding the right car
-                        if canOvertake:
-                            for i in [desiredIndex, desiredIndex+1]:
-                                otherCar = desiredLane.vehicles[i]
-                                if areSafeDist(car, otherCar):
-                                    if (car.overtaking == 1 and i == desiredIndex
-                                            and car.x-otherCar.x-CAR_LENGTH < 1.5*otherCar.desiredDist(car)):
-                                        # Don't overtake if it will cause the car behind to hit his brakes hard
-                                        canOvertake = False
-                                        break
-
-                                    if (car.overtaking == -1 and i == desiredIndex+1
-                                            and otherCar.x-car.x-CAR_LENGTH < 1.5*car.desiredDist(otherCar)):
-                                        # Prevents merging when the car in front will cause us to hit our brakes hard
-                                        canOvertake = False
-                                        break
-                                else:
-                                    canOvertake = False
-                                    break
+                        canOvertake = False
+                        break
 
                 if canOvertake and car.x < lane.length:
-                    if desiredIndex is None:
-                        # desiredLane is empty
-                        desiredLane.vehicles.insert(0, car)
+                    if (desiredLane.vehicles[indices[1]].x < car.x and indices[1] != -1):
+                        print("Someone's search function don't work")
+                        desiredLane.findCarsAround(car.x)
+                    if (desiredLane.vehicles[0].x > car.x):
+                        desiredLane.vehicles.insert(0,car)
+                    elif(indices[1] == -1):
+                        desiredLane.vehicles.append(car)
                     else:
-                        desiredLane.vehicles.insert(desiredIndex+1, car)
+                        desiredLane.vehicles.insert(indices[1], car)
                     lane.vehicles.remove(car)
-                    lane.vehicles.sort(key=lambda c: c.x)
                     
                 car.overtaking = 0
             
