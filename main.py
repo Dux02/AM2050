@@ -1,5 +1,7 @@
-from src.Simulation import Simulation
-from src.Output import AbstractOutput
+from numpy.random import f
+from src.Simulation import Simulation, DataSimulation
+from src.VisualSimulation import VisualSimulation
+from src.Output import AbstractOutput, FileOutput
 import numpy as np
 import pandas as pd
 
@@ -11,8 +13,7 @@ def moving_average(a, n=3):
 
 
 ps, average_times = [], []
-f = open('times.txt', 'a')
-DT = 0.01  # DT=0.2 gives crashes (at prob=1), even for one lane!
+DT = 0.05  # DT=0.2 gives crashes (at prob=1), even for one lane!
 LANES = 5
 
 
@@ -20,10 +21,15 @@ saving_data = []
 # plt.figure()
 for i in range(1, LANES+1):
     # Simulate
+    # For data simulation
+    #f = open('./data/'+str(np.datetime64('today'))+'-Lanes ' + str(i),'wb')
+    #output = FileOutput(f)
+
+    # For visualisation
     output = AbstractOutput()
-    sim = Simulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES, dtype=int)*0)
+    sim = VisualSimulation(output, dt=DT, lanes=i, cars=np.ones(LANES, dtype=int)*1)
     prob = 10
-    sim.manyCarsPP(p=prob, carcap=2000)
+    sim.manyCarsPP(p=prob, carcap=100)
 
     # Data gathering
     saving_data.append(output.data)
@@ -32,7 +38,7 @@ for i in range(1, LANES+1):
     average_times.append(np.mean(output.data[100:]))  # append av time and ignore first 100 cars
     """
     # plt.plot(moving_average(output.data, 50), label=str(i)+" lanes")
-
+    # f.close()
     if (i % 1 == 0):
         print("I did loop", i)
 """

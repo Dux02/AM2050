@@ -1,4 +1,4 @@
-from .Car import Car, PIXEL_PER_M
+from .Car import Car, DataCar, PIXEL_PER_M
 from numpy import linspace, mean
 from random import randint, random
 
@@ -13,22 +13,18 @@ class Lane:
         self.timeSinceLastCarGenerated = 0
         self.maxvel = 120 / 3.6
 
-    def update(self, dt: float) -> list[Car]:
+    def update(self, dt: float, frame: int) -> list[Car]:
         numOfCars = len(self.vehicles)
         if (numOfCars == 0):
             return
         carsToRemove: list[int] = []
         carsOvertaking: list[Car] = []
         for i in range(numOfCars):
-            if (i == numOfCars-1):
-                self.vehicles[i].update(dt)
-            else:
-                if (self.vehicles[i+1].x < self.vehicles[i].x):
-                    wrongCar = self.vehicles[i+1]
-                    self.vehicles.pop(i+1)
-                    debug = self.findCarsAround(wrongCar.x)
-                    print(debug)
-                self.vehicles[i].update(dt, self.vehicles[i+1])
+            infront = None
+            if (i < numOfCars-1):
+                infront = self.vehicles[i+1]
+            
+            self.vehicles[i].update(dt, frame, infront)
                 
             if (self.vehicles[i].overtaking != 0):
                     carsOvertaking.append(self.vehicles[i])
@@ -128,3 +124,22 @@ class Lane:
         return False
 
 
+class DataLane(Lane):
+    def __init__(self, cars: int = 0, y: int = 0):
+        super().__init__(cars)
+        self.y = y
+        xcoords = linspace(0, self.length, cars)
+        self.vehicles: list[DataCar] = [DataCar(xcoords[i],y) for i in range(cars)]
+    
+    def generateCarT(self, timestep: int, frame: int) -> bool:
+        if super().generateCarT(timestep, frame):
+            toReplace = self.vehicles[0]
+            self.vehicles[0] = DataCar(toReplace.x,self.y,toReplace.spawnframe)
+            return True
+        return False
+    def generateCarP(self, p: float, frame: int) -> bool:
+        if super().generateCarP(p, frame):
+            toReplace = self.vehicles[0]
+            self.vehicles[0] = DataCar(toReplace.x,self.y,toReplace.spawnframe)
+            return True
+        return False

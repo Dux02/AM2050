@@ -1,7 +1,7 @@
 # Car class
 from typing import Union, Tuple
 from numpy.random import normal
-from random import choice
+from random import choice,choices
 from numpy import sqrt, sign, exp
 from numbers import Number
 
@@ -17,11 +17,15 @@ V_MIN = 60 / 3.6
 CAR_LENGTH = 20
 PIXEL_PER_M = 10
 
+alphabet = 'abcdefhijklmnopqrstuvwxyz0123456789'
+def generateID() -> str:
+    return ''.join(choices(alphabet,k=8)) # Picks 8 letters at random, generally v. low collision chance
 
 class Car:
     a_max = 1.44 
     b_max = 4.66 
     sqrt_ab = 2*sqrt(a_max*b_max)
+    debugcounter = 0
     def __init__(self, x = 0,spawnframe=0):
         self.desiredvel: float = abs(normal(V_DESIRED, GUSTAVO/3.6))  # Absolute value necessary to avoid negatives (even if unlikely!)
         if (self.desiredvel < V_MIN):
@@ -31,13 +35,17 @@ class Car:
         self.a: float = 0
         self.overtaking = 0
         self.spawnframe = spawnframe
+        self.frame = spawnframe
         self.s0 = 0
-        self.waited = 0
-        self.pissed = False
-        self.prepissedvel = self.desiredvel
+        #self.waited = 0
+        #self.pissed = False
+        #self.prepissedvel = self.desiredvel
         self.debug = False
     
-    def update(self, dt: float, infront: Union['Car', None] = None):
+    def update(self, dt: float, frame: int, infront: Union['Car', None] = None):
+        if (self.frame >= frame):
+            return # Avoid double updating
+        self.frame = frame
         crash = False
         
         s = 5000
@@ -60,34 +68,42 @@ class Car:
             self.desiredvel = self.prepissedvel
             self.a_max /= 10
         """
-        self.overtaking = -1
+        self.overtaking = 0
         
         if (infront is not None):
             s = (infront.x - self.x - CAR_LENGTH)/PIXEL_PER_M  # s is in meters
             delta_v = self.vel - infront.vel
             # Do we want to overtake?
             # OVTF = 1.2, the factor time s0. Note this is similar to the previous code w/ a min. 3 second headway instead.
-            if (s < 1.2 * self.s0 and self.vel < self.desiredvel and self.desiredvel > infront.vel):
+            if (s < 1.2 * self.s0 and self.vel < 0.95*self.desiredvel and self.desiredvel > infront.vel):
                 # Can we overtake?
                 self.overtaking = 1
         
         # Do we want to merge?
-        # if (self.vel > 0.8*self.desiredvel):
-        #     self.overtaking = -1
+        if (self.vel > 0.98*self.desiredvel):
+             self.overtaking = -1
         
         crash = self.advancedSpeed(dt, infront)
         if (crash):
-            print(self.a, self.vel, self.x, self.s0)
+            print(round(self.x), self.vel, round(self.a,3), self.s0)
+            self.overtaking = 0
+            Car.debugcounter += 1
+            if (Car.debugcounter == 10):
+                self.debug = True
             
         if (self.vel < 0):
             self.vel = 0
         self.x += self.vel*dt*PIXEL_PER_M  # x is in pixels, vel is in m/s
 
-    def normalSpeed(self,sigma: float):
+    def normalSpeed(self,sigma: float, dt:float, frame: int):
+        if (self.frame >= frame):
+            return
+        self.frame = frame
         prev_vel = self.vel
         self.vel = normal(prev_vel, sigma)
         while(self.vel <= (60/3.6)):
             self.vel = normal(prev_vel, sigma)
+        self.x += self.vel*dt
 
     def advancedSpeed(self, dt: float, infront: Union['Car', None] = None) -> bool:
         ''' Calculate the new speed and acceleration of the car on the basis of the IDM model.
@@ -126,10 +142,8 @@ class Car:
         factor = 1
         if (infront is not None):
             delta_v = self.vel - infront.vel
-            if (delta_v < 4):
-                factor = exp(delta_v-4)  # when delta_v is small
 
-        return 2 + (self.vel*1.6 + self.vel*delta_v/self.sqrt_ab)*factor
+        return 2 + max(self.vel*1.6 + self.vel*delta_v/self.sqrt_ab,0)
         # return max(2, 2 + self.vel*1.6 + self.vel*delta_v/self.sqrt_ab)  # linear correction (easier to explain)
 
     def inDist(self, dist: Union[float, Tuple[float,float]], othercar: 'Car') -> bool:
@@ -170,6 +184,28 @@ class Car:
                 pygame.mixer.Sound.play(beep)
         return
 
+class CarData:
+    def __init__(self, car: 'DataCar') -> None:
+        self.desiredvel = car.desiredvel
+        self.framedata = [(car.frame,car.x,car.y,car.vel,car.a)]
+        self.id = car.id
 
+class DataCar(Car):
+    def __init__(self, x=0, y=0, spawnframe=0):
+        super().__init__(x, spawnframe)
+        self.y = y
+        self.id = generateID()
+        self.data = CarData(self)
+    
+    def update(self, dt: float, frame: int, infront: Union[Car, None] = None):
+        super().update(dt, frame, infront)
+        if (self.data.framedata[-1][0] < self.frame):
+            self.data.framedata.append((frame,self.x,self.y,self.vel,self.a))
+    
+    def normalSpeed(self, sigma: float, dt: float, frame:int):
+        super().normalSpeed(sigma,dt,float)
+        if (self.data.framedata[-1][0] < self.frame):
+            self.data.framedata.append((frame,self.x,self.y,self.vel,self.a))
+        
 
 
