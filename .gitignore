@@ -165,3 +165,5 @@ times.txt
 .vscode
 .vscode/
 data.csv
+.data
+.data/
