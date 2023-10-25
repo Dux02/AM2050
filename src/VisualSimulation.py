@@ -34,7 +34,7 @@ class Renderer():
     
     def kill(self):
         pygame.display.quit()
-        pygame
+        pygame.quit()
 
 class VisualSimulation(Simulation):
     renderer: Union[None, Renderer] = None
