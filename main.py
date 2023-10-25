@@ -4,6 +4,7 @@ from src.VisualSimulation import VisualSimulation
 from src.Output import AbstractOutput, FileOutput
 import numpy as np
 import pandas as pd
+import pickle
 
 
 def moving_average(a, n=3):
@@ -13,13 +14,15 @@ def moving_average(a, n=3):
 
 
 ps, average_times = [], []
-DT = 0.05  # DT=0.2 gives crashes (at prob=1), even for one lane!
+DT = 0.1  # DT=0.2 gives crashes (at prob=1), even for one lane!
 LANES = 5
+CARCAP = 1000
+ITERS = 20
 
 
 saving_data = []
 # plt.figure()
-for i in range(1, LANES+1):
+for i in range(ITERS):
     # Simulate
     # For data simulation
     #f = open('./data/'+str(np.datetime64('today'))+'-Lanes ' + str(i),'wb')
@@ -27,9 +30,11 @@ for i in range(1, LANES+1):
 
     # For visualisation
     output = AbstractOutput()
-    sim = VisualSimulation(output, dt=DT, lanes=i, cars=np.ones(LANES, dtype=int)*1)
-    prob = 10
-    sim.manyCarsPP(p=prob, carcap=100)
+    sim = VisualSimulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES, dtype=int)*1)
+    if (i == 0):
+        VisualSimulation.renderer.kill()
+    prob = 0.1 + i*0.1
+    sim.manyCarsPP(p=prob, carcap=CARCAP)
 
     # Data gathering
     saving_data.append(output.data)
@@ -47,9 +52,12 @@ plt.xlabel("Car Index")
 plt.ylabel("Time taken")
 plt.show()
 """
-print(saving_data)
-df = pd.DataFrame(np.array(saving_data))
-df.to_csv('data.csv', index=False)
+#print(saving_data)
+f = open('./data/'+str(np.datetime64('today'))+'- p variation, carcap ' +str(CARCAP) + ', iters ' + str(ITERS), 'wb')
+pickle.dump(saving_data,f)
+f.close()
+#df = pd.DataFrame(np.array(saving_data))
+#df.to_csv('data.csv', index=False)
 
 print('hij denk hij is la primo maar hij heeft')
 """

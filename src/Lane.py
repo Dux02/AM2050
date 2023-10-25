@@ -16,10 +16,10 @@ class Lane:
     def update(self, dt: float, frame: int) -> list[Car]:
         numOfCars = len(self.vehicles)
         if (numOfCars == 0):
-            return
+            return []
         carsToRemove: list[int] = []
         carsOvertaking: list[Car] = []
-        for i in range(numOfCars):
+        for i in range(numOfCars-1,-1,-1):
             infront = None
             if (i < numOfCars-1):
                 infront = self.vehicles[i+1]
@@ -69,7 +69,7 @@ class Lane:
             return [-1,-1]
         while len(checkList) > 1:
             middleIndex = (len(checkList)-1) // 2  # Rounds down, but remember index starts @ 0
-            if checkList[middleIndex].x < x < checkList[middleIndex+1].x:
+            if checkList[middleIndex].x <= x < checkList[middleIndex+1].x:
                 i += middleIndex
                 # Done, found our car!
                 break

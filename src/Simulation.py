@@ -23,7 +23,7 @@ def areSafeDist(main_car: 'Car', secondary_car: 'Car', overtaking=1):
         scale = 1
 
     SafetyDist = scale * 3 * delta_v * PIXEL_PER_M + 2 * PIXEL_PER_M
-    if main_car.x - CAR_LENGTH - SafetyDist < secondary_car.x < main_car.x + CAR_LENGTH + SafetyDist:
+    if main_car.inDist(SafetyDist,secondary_car):
         return False
     return True
 
@@ -36,6 +36,8 @@ def swapCarOnOvertake(car: Car, exitingLane: Lane, enteringLane: Lane, indices: 
         enteringLane.vehicles.insert(indices[1], car)
     exitingLane.vehicles.remove(car)
     
+def is_sorted(lane: Lane):
+    return all( a.x <= b.x for a,b in zip(lane.vehicles,lane.vehicles[1:]))
 
 class Simulation:
     # dt given in seconds
@@ -49,14 +51,21 @@ class Simulation:
             pygame.quit()
     
     def update(self):
+        carsOvertaking =[]
         for lane in self.lanes:
             i = self.lanes.index(lane)
-            carsOvertaking = lane.update(self.dt,self.frames)
-            if (carsOvertaking is None):
+            carsOvertaking.append(lane.update(self.dt,self.frames))
+            if (not is_sorted(lane)):
+                print("Scooby dooby doo")
+        
+        for i in range(len(self.lanes)):
+            if len(carsOvertaking[i]) == 0:
                 continue
-            for car in carsOvertaking:
-                self.overtakingLogic(car,i,lane)
+            for car in carsOvertaking[i]:
+                self.overtakingLogic(car,i,self.lanes[i])
                 car.overtaking = 0
+            if (not is_sorted(self.lanes[i])):
+                print("We're in the bonezone now!")
         
         self.frames += 1    
         if (self.frames % int(10/self.dt) == 0):
@@ -72,11 +81,14 @@ class Simulation:
         desiredLane: Lane = self.lanes[laneno-car.overtaking]
         canOvertake = True
 
+        if (car.x > desiredLane.length):
+            return False
+
         if len(desiredLane.vehicles) == 0:
             # We can always go into an empty lane :)
             desiredLane.vehicles.append(car)
             lane.vehicles.remove(car)
-            return False
+            return True
         
         if len(desiredLane.vehicles) == 1:
             indices = [0,0]
@@ -103,11 +115,16 @@ class Simulation:
         if canOvertake:
             if (len(desiredLane.vehicles) > 1 and desiredLane.vehicles[indices[1]].x < car.x and indices[1] != -1):
                 print("Someone's search function don't work")
-                desiredLane.findCarsAround(car.x)
-            if (len(lane.vehicles) == 1):
+            if (desiredLane.vehicles[indices[1]].x < car.x and indices[1] != -1 and len(desiredLane.vehicles) != 1) or (car.x < desiredLane.vehicles[indices[0]].x and indices[0] != 0):
+                print("DEATH IS UPON THEE")
+            if (len(desiredLane.vehicles) == 1):
                 swapCarOnOvertake(car,lane,desiredLane,[1,1])
+                if not is_sorted(desiredLane):
+                    print("THE PROBLEM IS NOT WHAT IT SEEMS")
             else:
                 swapCarOnOvertake(car,lane,desiredLane,indices)
+                if not is_sorted(desiredLane):
+                    print("The president has arrived")
             return True
         
         return False

@@ -3,6 +3,7 @@ from .Simulation import Simulation
 from .Output import AbstractOutput
 from .Car import V_MIN, V_DESIRED, GUSTAVO, PIXEL_PER_M, CAR_LENGTH
 import pygame
+import time
 
 temp = max(V_MIN, V_DESIRED - 3*GUSTAVO/3.6)
 # B is meters per second: A converts m/s to 0-255
@@ -32,9 +33,11 @@ class Renderer():
             Renderer.font = pygame.font.Font("freesansbold.ttf",21)
             Renderer.font2 = pygame.font.Font("freesansbold.ttf",10)
     
-    def kill(self):
+    @staticmethod
+    def kill():
         pygame.display.quit()
         pygame.quit()
+        Renderer.RENDER = False
 
 class VisualSimulation(Simulation):
     renderer: Union[None, Renderer] = None
@@ -46,8 +49,8 @@ class VisualSimulation(Simulation):
     
     def __init__(self, output: AbstractOutput, dt: float = 1, lanes: int = 1, cars: list[int] = [1]):
         super().__init__(output, dt, lanes, cars)
-        self.rendering = True
         self.initRenderer()
+        self.rendering = VisualSimulation.renderer.RENDER
         
 
 
@@ -55,6 +58,8 @@ class VisualSimulation(Simulation):
     
     def update(self):
         super().update()
+        if not VisualSimulation.renderer.RENDER:
+            self.rendering = False
         if self.rendering:
             self.render()
     
