@@ -14,9 +14,9 @@ def moving_average(a, n=3):
 
 
 ps, average_times = [], []
-DT = 0.1  # DT=0.2 gives crashes (at prob=1), even for one lane!
+DT = 0.3  # DT=0.2 gives crashes (at prob=1), even for one lane!
 LANES = 5
-CARCAP = 500
+CARCAP = 50000
 ITERS = 20
 
 

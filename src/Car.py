@@ -9,11 +9,11 @@ import pygame
 pygame.mixer.init()
 beeps = [pygame.mixer.Sound("media/beep"+str(i+1)+".wav") for i in range(10)]
 
-### CAR & LANE PARAMETERS (STAFF ONLY) ###
+# ----- CAR & LANE PARAMETERS (STAFF ONLY) -----
 V_DESIRED = 120 / 3.6  # m/s
 SIGMA = 2  # Standard deviation of the random initial velocities
 GRINDSET = 0.1  # Standard dev. of random tick updates
-GUSTAVO = 20  # Standard dev. of desired velocities (kph)
+GUSTAVO = 30  # Standard dev. of desired velocities (kph)
 V_MIN = 60 / 3.6
 CAR_LENGTH = 2  # meters
 CAR_HEIGHT = 1  # meters
@@ -61,7 +61,7 @@ class Car:
         self.determineGap(infront)
 
         # Do we want to merge?
-        if -0.5 * 120 / (3.6 * self.desiredvel) < self.a < 0.5 * 120 / (3.6 * self.desiredvel):
+        if -0.5 * (120/(3.6 * self.desiredvel))**2 < self.a < 0.5 * (120/(3.6 * self.desiredvel))**2:
             # Used to be dependent on relation between desiredvel and vel but
             # that doesn't work in traffic (no cars would merge)
             # Now we merge when we're not accelerating much
@@ -74,7 +74,7 @@ class Car:
             #     self.overtaking = 1
 
             # The constant -1 here is related to the constant -0.5 in Simulation.overtakingLogic
-            if self.a < -1 * 120 / (3.6 * self.desiredvel) and self.desiredvel > infront.vel:
+            if self.a < -1 * (120/(3.6 * self.desiredvel))**2 and self.desiredvel > infront.vel:
                 # if we're slowing down, we want to overtake
                 self.overtaking = 1
         

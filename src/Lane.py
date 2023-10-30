@@ -12,12 +12,10 @@ class Lane:
         self.finishedVehicles: list[Car] = []
         self.timeSinceLastCarGenerated = 0
         self.maxvel = 120 / 3.6
+        self.signs = 0
+        self.multiplier = 1
 
     def update(self, dt: float, frame: int) -> list[Car]:
-
-        # if frame*dt % 10 == 0:
-        #     self.vehicles[-1].debugger()
-
         numOfCars = len(self.vehicles)
         if (numOfCars == 0):
             return []
@@ -85,7 +83,7 @@ class Lane:
                 checkList = checkList[middleIndex+1:]
         return [i, i+1]
     
-    def generateCarT(self,timestep:int,frame:int) -> bool:
+    def generateCarT(self, timestep:int, frame: int) -> bool:
         '''
         T STANDS FOR TIMESTAMP - FOR PROBABILISTIC GENERATION SEE generateCarP
         Generates a car between 1 and 2 timesteps since last car generated in the lane (wrt frame)

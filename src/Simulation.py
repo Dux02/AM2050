@@ -36,19 +36,20 @@ def swapCarOnOvertake(car: Car, exitingLane: Lane, enteringLane: Lane, indices: 
     else:
         enteringLane.vehicles.insert(indices[1], car)
     exitingLane.vehicles.remove(car)
-    
+
+
 def is_sorted(lane: Lane):
-    return all( a.x <= b.x for a,b in zip(lane.vehicles,lane.vehicles[1:]))
+    return all(a.x <= b.x for a, b in zip(lane.vehicles, lane.vehicles[1:]))
+
 
 class Simulation:
     # dt given in seconds
-
     def __init__(self, output: AbstractOutput, dt:float = 1, lanes: int = 1, cars: list[int] = [1]):
         self.lanes: list[Lane] = [Lane(cars[i]) for i in range(lanes)]
         self.dt = dt
         self.output = output  # File to write interesting data to
         self.frames = 0
-        if (not RENDER):
+        if not RENDER:
             pygame.quit()
     
     def update(self):
@@ -104,11 +105,11 @@ class Simulation:
                 # If there is a car, check whether we can overtake it.
                 canOvertake = False
                 break
-            elif otherCar.calcAccel(car) < -0.5 * 120/(3.6*car.desiredvel):
+            elif otherCar.calcAccel(car) < -0.5 * (120/(3.6*car.desiredvel))**2:
                 # Don't go if it will cause the car behind to hit his brakes hard
                 canOvertake = False
                 break
-            elif car.calcAccel(otherCar) < -0.5 * (3.6*car.desiredvel)/120:
+            elif car.calcAccel(otherCar) < -0.5 * ((3.6*car.desiredvel)/120)**2:
                 # Prevents go if the car in front will cause us to hit our brakes hard
                 canOvertake = False
                 break
@@ -197,8 +198,6 @@ class Simulation:
         carsgenerated = 0
         cars = self.getCars()
         while (cars > 0 or carsgenerated < carcap):
-            time.sleep(1)
-
             data_bit = []  # list to gather data we want to save each frame
             # print(cars)
             self.update()

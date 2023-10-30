@@ -3,6 +3,7 @@ from .Simulation import Simulation
 from .Output import AbstractOutput
 from .Car import V_MIN, V_DESIRED, GUSTAVO, PIXEL_PER_M, CAR_LENGTH, CAR_HEIGHT, LANE_HEIGHT, LINE_HEIGHT
 import pygame
+import numpy as np
 import time
 
 temp = max(V_MIN, V_DESIRED - 3*GUSTAVO/3.6)
@@ -10,10 +11,12 @@ temp = max(V_MIN, V_DESIRED - 3*GUSTAVO/3.6)
 A, B = (255-0)/(V_DESIRED + 3*GUSTAVO/3.6 - temp), -temp
 
 
-
 class Renderer():
     image = pygame.image.load('media/auto.png')
-    RENDER = False # NOT A HARDCODE OF IF WE RENDER OR NOT!!!
+    treeImages = [pygame.image.load('media/treebigger.png'), pygame.image.load('media/treebig.png'),
+             pygame.image.load('media/treemedium.png'), pygame.image.load('media/treesmall.png')]
+
+    RENDER = False  # NOT A HARDCODE OF IF WE RENDER OR NOT!!!
     
     WIDTH, HEIGHT = 1200, 600  # 1500, 720 blas computer
     red = (255, 0, 0)
@@ -53,6 +56,29 @@ class VisualSimulation(Simulation):
         super().__init__(output, dt, lanes, cars)
         self.initRenderer()
         self.rendering = VisualSimulation.renderer.RENDER
+        self.avspeeds, self.avdesspeeds = 0, 0
+
+        # Tree locations
+        numTrees = 500
+        rdr = VisualSimulation.renderer
+        self.trees = []
+
+        roadWidth = PIXEL_PER_M*(LANE_HEIGHT*len(self.lanes) + LINE_HEIGHT*(len(self.lanes)-1))
+        top = (rdr.HEIGHT - roadWidth)/2
+
+        miny1, maxy1 = 0, top
+        miny2, maxy2 = top+roadWidth, rdr.HEIGHT
+        for i in range(numTrees):
+            x = np.random.randint(self.lanes[0].length-140)
+
+            coin = np.random.choice(["heads", "tails"])
+            if coin == "heads":
+                y = np.random.randint(miny1, maxy1-168)
+            else:
+                y = np.random.randint(miny2, maxy2-168)
+
+            image = np.random.choice(rdr.treeImages)
+            self.trees.append([x, y, image])
 
     def update(self):
         super().update()
@@ -63,19 +89,28 @@ class VisualSimulation(Simulation):
     
     def render(self):
         rdr: Renderer = VisualSimulation.renderer
-        if (self.frames % int(2/self.dt) == 0):
-            # Draw statistics
-            pygame.draw.rect(rdr.window, rdr.white, pygame.Rect(0, 0, rdr.WIDTH, 90))
-            avd_text = rdr.font.render("Avg desired speeds: " + str([round(lane.getAvgDesiredSpeeds()*3.6) for lane in self.lanes]) + " km/h",
-                                        True, rdr.black,rdr.white)
-            av_text = rdr.font.render("Avg speeds: " + str([round(lane.getAvgSpeed() * 3.6) for lane in self.lanes]) + " km/h",
-                                        True, rdr.black, rdr.white)
-            # av_text = font.render("No. of cars: "+ str(self.getCars()) + " cars",True,black,white)
-            rdr.window.blit(avd_text, (0, 0))
-            rdr.window.blit(av_text, (0, 30))
+        rdr.window.fill(rdr.white)
+        if (int((self.frames-1)*self.dt) % 10 == 0):
+            # Update statistics
+            self.avdesspeeds = str([round(lane.getAvgDesiredSpeeds()*3.6) for lane in self.lanes])
+            self.avspeeds = str([round(lane.getAvgSpeed() * 3.6) for lane in self.lanes])
+        # Draw statistics
+        pygame.draw.rect(rdr.window, rdr.white, pygame.Rect(0, 0, rdr.WIDTH, 90))
+        avd_text = rdr.font.render("Avg desired speeds: " + self.avdesspeeds + " km/h",
+                                    True, rdr.black,rdr.white)
+        av_text = rdr.font.render("Avg speeds: " + self.avspeeds + " km/h",
+                                    True, rdr.black, rdr.white)
+        # av_text = font.render("No. of cars: "+ str(self.getCars()) + " cars",True,black,white)
+        rdr.window.blit(avd_text, (0, 0))
+        rdr.window.blit(av_text, (0, 30))
 
         clock = rdr.font.render("T+" + str(round(self.frames*self.dt)) + " s",True, rdr.black, rdr.white)
         rdr.window.blit(clock, (0, 60))
+
+        # # Draw trees
+        # for (x, y, image) in self.trees:
+        #     if 0 < x - rdr.begin_draw < rdr.WIDTH:
+        #         rdr.window.blit(image, (x - rdr.begin_draw, y))
 
         # Draw lanes
         n = len(self.lanes)
@@ -110,14 +145,14 @@ class VisualSimulation(Simulation):
                         color = (0, 255, 0)
                     in_front_dist = car.s0 * PIXEL_PER_M
 
-                    pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x + cl, draw_y + int(ch/2), in_front_dist, 1))
-                            
                     pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x, draw_y, cl, ch))
                     # window.blit(self.image,(draw_x, draw_y))
-                    acc_text = rdr.font2.render(str(round(car.a,1)), True, rdr.white, color)
-                    rdr.window.blit(acc_text, (draw_x, draw_y))
 
-        # Draw buttons and check if there being hovered over
+                    # acc_text = rdr.font2.render(str(round(car.a,1)), True, rdr.white, color)
+                    # rdr.window.blit(acc_text, (draw_x, draw_y))
+                    # pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x + cl, draw_y + int(ch / 2), in_front_dist, 1))
+
+                    # Draw buttons and check if there being hovered over
         pygame.draw.rect(rdr.window, rdr.red, pygame.Rect(0, rdr.HEIGHT-40, 40, 40))
         pygame.draw.rect(rdr.window, rdr.green, pygame.Rect(50, rdr.HEIGHT-40, 40, 40))
         mouse = pygame.mouse.get_pos()
@@ -125,7 +160,7 @@ class VisualSimulation(Simulation):
             rdr.begin_draw -= 100*self.dt*PIXEL_PER_M
         if 50 < mouse[0] < 90 and rdr.HEIGHT-40 < mouse[1] < rdr.HEIGHT:
             rdr.begin_draw += 100*self.dt*PIXEL_PER_M
-        window_pos = rdr.font.render(str(round(rdr.begin_draw)), True, rdr.black, rdr.white)
+        window_pos = rdr.font.render(str(round(rdr.begin_draw/PIXEL_PER_M)) + " m", True, rdr.black, rdr.white)
         pygame.draw.rect(rdr.window, rdr.white, pygame.Rect(90,rdr.HEIGHT-40,100,40))
         rdr.window.blit(window_pos, (100, rdr.HEIGHT-20))
         
