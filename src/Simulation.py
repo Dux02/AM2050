@@ -35,6 +35,9 @@ def swapCarOnOvertake(car: Car, exitingLane: Lane, enteringLane: Lane, indices: 
         enteringLane.vehicles.append(car)
     else:
         enteringLane.vehicles.insert(indices[1], car)
+
+    car.multiplier = enteringLane.multiplier
+
     exitingLane.vehicles.remove(car)
 
 
@@ -89,6 +92,7 @@ class Simulation:
         if len(desiredLane.vehicles) == 0:
             # We can always go into an empty lane :)
             desiredLane.vehicles.append(car)
+            car.multiplier = desiredLane.multiplier
             lane.vehicles.remove(car)
             return True
         
@@ -132,7 +136,7 @@ class Simulation:
                 if not is_sorted(desiredLane):
                     print("THE PROBLEM IS NOT WHAT IT SEEMS")
             else:
-                swapCarOnOvertake(car,lane,desiredLane,indices)
+                swapCarOnOvertake(car, lane, desiredLane, indices)
                 if not is_sorted(desiredLane):
                     print("The president has arrived")
             return True

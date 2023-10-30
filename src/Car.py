@@ -46,6 +46,7 @@ class Car:
         #self.prepissedvel = self.desiredvel
         self.debug = False
         self.s = 100000
+        self.multiplier = 1
     
     def update(self, dt: float, frame: int, infront: Union['Car', None] = None):
         if (self.frame >= frame):
@@ -61,7 +62,7 @@ class Car:
         self.determineGap(infront)
 
         # Do we want to merge?
-        if -0.5 * (120/(3.6 * self.desiredvel))**2 < self.a < 0.5 * (120/(3.6 * self.desiredvel))**2:
+        if -0.5 * (120/(3.6 * self.multiplier*self.desiredvel))**2 < self.a < 0.5 * (120/(3.6*self.multiplier*self.desiredvel))**2:
             # Used to be dependent on relation between desiredvel and vel but
             # that doesn't work in traffic (no cars would merge)
             # Now we merge when we're not accelerating much
@@ -74,7 +75,7 @@ class Car:
             #     self.overtaking = 1
 
             # The constant -1 here is related to the constant -0.5 in Simulation.overtakingLogic
-            if self.a < -1 * (120/(3.6 * self.desiredvel))**2 and self.desiredvel > infront.vel:
+            if self.a < -1 * (120/(3.6 * self.multiplier*self.desiredvel))**2 and self.multiplier*self.desiredvel > infront.vel:
                 # if we're slowing down, we want to overtake
                 self.overtaking = 1
         
@@ -97,7 +98,7 @@ class Car:
             self.s = s
 
     def checkAnger(self, dt):
-        if (self.vel < self.desiredvel * 0.8 and not self.pissed):
+        if (self.vel < self.multiplier*self.desiredvel * 0.8 and not self.pissed):
             self.waited += 0  # We're waiting
         elif (self.pissed):
             self.waited += 1  # Keep track of when our eruption was
@@ -107,7 +108,7 @@ class Car:
             self.pissed = True
             self.desiredvel *= 1.5
             self.a_max *= 10  # With the power of pure rage we can survive at least a g-force
-        elif (self.pissed and self.waited * dt > 10 and self.vel > (self.desiredvel / 1.5)):
+        elif (self.pissed and self.waited * dt > 10 and self.vel > (self.multiplier*self.desiredvel / 1.5)):
             self.waited = 0
             self.pissed = False
             self.desiredvel = self.prepissedvel
@@ -147,7 +148,7 @@ class Car:
         """Calculates and returns acceleration for self with infront the car infront"""
         self.s0 = self.desiredDist(infront)
         alpha = self.s0 / self.s
-        return self.a_max * (1 - (self.vel / self.desiredvel) ** 4 - alpha ** 2)
+        return self.a_max * (1 - (self.vel / (self.multiplier*self.desiredvel)) ** 4 - alpha ** 2)
 
     def desiredDist(self, infront: Union['Car', None] = None) -> float:
         """ Returns the desired distance of the car based on the car in front of it, in meters.
@@ -196,18 +197,14 @@ class Car:
         :type windowspecs: Tuple[int,int]
         """
         
-        if (timestamp % 1 == 0 and infront.vel < 0.5*self.desiredvel and windowspecs[0] < self.x < windowspecs[1]):
+        if (timestamp % 1 == 0 and infront.vel < 0.5*self.multiplier*self.desiredvel and windowspecs[0] < self.x < windowspecs[1]):
                 beep = choice(beeps)
                 pygame.mixer.Sound.play(beep)
         return
 
-    def debugger(self):
-        print("a is: a_max (1 -", (self.vel/self.desiredvel)**4, "- (" + str(self.s0) + "/" + str(self.s) + ")^2)")
-        print("thus a =", self.a)
-
 class CarData:
     def __init__(self, car: 'DataCar') -> None:
-        self.desiredvel = car.desiredvel
+        # self.desiredvel = car.desiredvel
         self.framedata = [(car.frame,car.x,car.y,car.vel,car.a)]
         self.id = car.id
 

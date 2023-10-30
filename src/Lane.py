@@ -16,6 +16,21 @@ class Lane:
         self.multiplier = 1
 
     def update(self, dt: float, frame: int) -> list[Car]:
+
+        # ------ DYNAMIC BORDS BETA -------
+        if False and int(frame*dt) % 10 == 0:  # check every once in a while
+            if 0 < self.getAvgSpeed()*3.6 <= 50:
+                # Traffic! Turn on the dynamic bords: max speed is now 50 kph
+                self.multiplier = 50/120
+                for car in self.vehicles:
+                    car.multiplier = self.multiplier
+
+            elif self.multiplier != 1:
+                # No traffic, we can turn off bords
+                self.multiplier = 1
+                for car in self.vehicles:
+                    car.multiplier = self.multiplier
+
         numOfCars = len(self.vehicles)
         if (numOfCars == 0):
             return []

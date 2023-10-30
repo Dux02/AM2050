@@ -14,10 +14,10 @@ def moving_average(a, n=3):
 
 
 ps, average_times = [], []
-DT = 0.3  # DT=0.2 gives crashes (at prob=1), even for one lane!
-LANES = 5
-CARCAP = 50000
-ITERS = 20
+DT = 0.5  # DT=0.2 gives crashes (at prob=1), even for one lane!
+LANES = 4
+CARCAP = 1000
+ITERS = 5
 
 
 saving_data = []
@@ -31,10 +31,9 @@ for i in range(ITERS):
     # For visualisation
     output = AbstractOutput()
     sim = VisualSimulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES, dtype=int)*1)
-    if (i == -1):
+    if (i == 0):
         VisualSimulation.renderer.kill()
-    prob = 0.1 + i*0.1
-    prob = 1
+    prob = 0.4 + i*0.4
     sim.manyCarsPP(p=prob, carcap=CARCAP)
 
     # Data gathering
@@ -54,8 +53,9 @@ plt.ylabel("Time taken")
 plt.show()
 """
 #print(saving_data)
-f = open('./data/'+str(np.datetime64('today'))+'- p variation, carcap ' +str(CARCAP) + ', iters ' + str(ITERS), 'wb')
-pickle.dump(saving_data,f)
+f = open('./data/'+str(np.datetime64('today'))+'- p variation, carcap ' +str(CARCAP) + ', iters '
+         + str(ITERS) + ', lanes ' + str(LANES), 'wb')
+pickle.dump(saving_data, f)
 f.close()
 #df = pd.DataFrame(np.array(saving_data))
 #df.to_csv('data.csv', index=False)

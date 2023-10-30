@@ -104,6 +104,10 @@ class VisualSimulation(Simulation):
         rdr.window.blit(avd_text, (0, 0))
         rdr.window.blit(av_text, (0, 30))
 
+        text = "Speed limits: " + str([round(120*lane.multiplier) for lane in self.lanes])
+        limits = rdr.font.render(text, True, rdr.black, rdr.white)
+        rdr.window.blit(limits, (int(rdr.WIDTH/2), 0))
+
         clock = rdr.font.render("T+" + str(round(self.frames*self.dt)) + " s",True, rdr.black, rdr.white)
         rdr.window.blit(clock, (0, 60))
 
