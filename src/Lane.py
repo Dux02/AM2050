@@ -14,6 +14,10 @@ class Lane:
         self.maxvel = 120 / 3.6
 
     def update(self, dt: float, frame: int) -> list[Car]:
+
+        # if frame*dt % 10 == 0:
+        #     self.vehicles[-1].debugger()
+
         numOfCars = len(self.vehicles)
         if (numOfCars == 0):
             return []
@@ -109,7 +113,7 @@ class Lane:
         If it successfully generates a car, it will return true, otherwise false.
         It will not spawn a car if there's not enough space to do so, regardless of the time since last spawn
         '''
-        if (random() < p):
+        if random() < p:
             if len(self.vehicles) == 0:
                 self.vehicles.insert(0, Car(spawnframe=frame))
                 self.timeSinceLastCarGenerated = frame
@@ -117,7 +121,10 @@ class Lane:
             if self.vehicles[0].x < SPAWNSAFETYDIST:
                 return False
             newCar = Car(spawnframe=frame)
-            newCar.vel = self.vehicles[0].vel  # To avoid crashes, the cars come in with the same speed as the car in front
+            if newCar.desiredvel > self.vehicles[0].vel:
+                # To avoid crashes, the cars come in with the same speed as the car in front
+                # However, it shouldn't make tractors go 130 because the car in front is doing so...
+                newCar.vel = self.vehicles[0].vel
             self.vehicles.insert(0, newCar)
             self.timeSinceLastCarGenerated = frame
             return True

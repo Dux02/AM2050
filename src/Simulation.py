@@ -1,10 +1,11 @@
 from typing import List
 from .Lane import Lane, DataLane
-from .Car import Car, CarData, DataCar, GUSTAVO, GRINDSET, V_DESIRED, V_MIN, CAR_LENGTH, PIXEL_PER_M  # Note that CAR_HEIGHT is set in Simulation.render
+from .Car import Car, CarData, DataCar, GRINDSET, PIXEL_PER_M
 from .Output import AbstractOutput, FileOutput
 from numpy import mean
 import pygame
 import pickle
+import time
 
 RENDER = True
 
@@ -54,7 +55,7 @@ class Simulation:
         carsOvertaking =[]
         for lane in self.lanes:
             i = self.lanes.index(lane)
-            carsOvertaking.append(lane.update(self.dt,self.frames))
+            carsOvertaking.append(lane.update(self.dt, self.frames))
             if (not is_sorted(lane)):
                 print("Scooby dooby doo")
         
@@ -62,7 +63,7 @@ class Simulation:
             if len(carsOvertaking[i]) == 0:
                 continue
             for car in carsOvertaking[i]:
-                self.overtakingLogic(car,i,self.lanes[i])
+                self.overtakingLogic(car, i, self.lanes[i])
                 car.overtaking = 0
             if (not is_sorted(self.lanes[i])):
                 print("We're in the bonezone now!")
@@ -91,7 +92,7 @@ class Simulation:
             return True
         
         if len(desiredLane.vehicles) == 1:
-            indices = [0,0]
+            indices = [0, 0]
         else:
             indices = desiredLane.findCarsAround(car.x)
             if (indices[1] != -1 and desiredLane.vehicles[indices[1]].x < car.x):
@@ -103,14 +104,22 @@ class Simulation:
                 # If there is a car, check whether we can overtake it.
                 canOvertake = False
                 break
-            elif (car.overtaking == 1 and car.inDist((1.5*120 / (3.6*car.desiredvel) *otherCar.desiredDist(car),0),otherCar)):
-                # Don't overtake if it will cause the car behind to hit his brakes hard
+            elif otherCar.calcAccel(car) < -0.5 * 120/(3.6*car.desiredvel):
+                # Don't go if it will cause the car behind to hit his brakes hard
                 canOvertake = False
                 break
-            elif (car.overtaking == -1 and car.inDist((0,0.7* (3.6*car.desiredvel) / 120 *car.desiredDist(otherCar)),otherCar)):
-                # Prevents merging when the car in front will cause us to hit our brakes hard
+            elif car.calcAccel(otherCar) < -0.5 * (3.6*car.desiredvel)/120:
+                # Prevents go if the car in front will cause us to hit our brakes hard
                 canOvertake = False
                 break
+            # elif car.overtaking == 1 and car.inDist((1.5*120 / (3.6*car.desiredvel) *otherCar.desiredDist(car),0),otherCar):
+            #     # Don't overtake if it will cause the car behind to hit his brakes hard
+            #     canOvertake = False
+            #     break
+            # elif (car.overtaking == -1 and car.inDist((0,0.7 * (3.6*car.desiredvel)/120 *car.desiredDist(otherCar)),otherCar)):
+            #     # Prevents merging when the car in front will cause us to hit our brakes hard
+            #     canOvertake = False
+            #     break
         
         if canOvertake:
             if (len(desiredLane.vehicles) > 1 and desiredLane.vehicles[indices[1]].x < car.x and indices[1] != -1):
@@ -188,6 +197,8 @@ class Simulation:
         carsgenerated = 0
         cars = self.getCars()
         while (cars > 0 or carsgenerated < carcap):
+            time.sleep(1)
+
             data_bit = []  # list to gather data we want to save each frame
             # print(cars)
             self.update()

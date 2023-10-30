@@ -16,7 +16,7 @@ def moving_average(a, n=3):
 ps, average_times = [], []
 DT = 0.1  # DT=0.2 gives crashes (at prob=1), even for one lane!
 LANES = 5
-CARCAP = 1000
+CARCAP = 500
 ITERS = 20
 
 
@@ -31,9 +31,10 @@ for i in range(ITERS):
     # For visualisation
     output = AbstractOutput()
     sim = VisualSimulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES, dtype=int)*1)
-    if (i == 0):
+    if (i == -1):
         VisualSimulation.renderer.kill()
     prob = 0.1 + i*0.1
+    prob = 1
     sim.manyCarsPP(p=prob, carcap=CARCAP)
 
     # Data gathering

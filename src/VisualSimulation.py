@@ -1,13 +1,15 @@
 from typing import Union
 from .Simulation import Simulation
 from .Output import AbstractOutput
-from .Car import V_MIN, V_DESIRED, GUSTAVO, PIXEL_PER_M, CAR_LENGTH
+from .Car import V_MIN, V_DESIRED, GUSTAVO, PIXEL_PER_M, CAR_LENGTH, CAR_HEIGHT, LANE_HEIGHT, LINE_HEIGHT
 import pygame
 import time
 
 temp = max(V_MIN, V_DESIRED - 3*GUSTAVO/3.6)
 # B is meters per second: A converts m/s to 0-255
 A, B = (255-0)/(V_DESIRED + 3*GUSTAVO/3.6 - temp), -temp
+
+
 
 class Renderer():
     image = pygame.image.load('media/auto.png')
@@ -22,8 +24,7 @@ class Renderer():
     black = (0, 0, 0)
     window = None
     begin_draw = 0
-    
-    
+
     def __init__(self) -> None:
         if not Renderer.RENDER:
             Renderer.RENDER = True
@@ -31,13 +32,14 @@ class Renderer():
             Renderer.window = pygame.display.set_mode((Renderer.WIDTH, Renderer.HEIGHT))
             Renderer.window.fill(Renderer.white)
             Renderer.font = pygame.font.Font("freesansbold.ttf",21)
-            Renderer.font2 = pygame.font.Font("freesansbold.ttf",10)
+            Renderer.font2 = pygame.font.Font("freesansbold.ttf",8)
     
     @staticmethod
     def kill():
         pygame.display.quit()
         pygame.quit()
         Renderer.RENDER = False
+
 
 class VisualSimulation(Simulation):
     renderer: Union[None, Renderer] = None
@@ -51,11 +53,7 @@ class VisualSimulation(Simulation):
         super().__init__(output, dt, lanes, cars)
         self.initRenderer()
         self.rendering = VisualSimulation.renderer.RENDER
-        
 
-
-    
-    
     def update(self):
         super().update()
         if not VisualSimulation.renderer.RENDER:
@@ -81,26 +79,26 @@ class VisualSimulation(Simulation):
 
         # Draw lanes
         n = len(self.lanes)
-        LANE_HEIGHT, LINE_HEIGHT = 20, 1
-        empty_space_above = (rdr.HEIGHT - LANE_HEIGHT*n)/2
-        pygame.draw.rect(rdr.window, rdr.grey, pygame.Rect(0, empty_space_above, rdr.WIDTH, LANE_HEIGHT*n+LINE_HEIGHT*(n-1)))
+        lh, lw = int(LANE_HEIGHT*PIXEL_PER_M), int(LINE_HEIGHT*PIXEL_PER_M)
+        empty_space_above = (rdr.HEIGHT - (lh*n+lw*(n-1)))/2
+        pygame.draw.rect(rdr.window, rdr.grey, pygame.Rect(0, empty_space_above, rdr.WIDTH, lh*n+lw*(n-1)))
         for i in range(n-1):
-            y = empty_space_above + LANE_HEIGHT + (LANE_HEIGHT+LINE_HEIGHT)*i
-            pygame.draw.rect(rdr.window, rdr.black, pygame.Rect(0, y, rdr.WIDTH, LINE_HEIGHT))
+            y = empty_space_above + lh + (lh+lw)*i
+            pygame.draw.rect(rdr.window, rdr.black, pygame.Rect(0, y, rdr.WIDTH, lw))
 
         # Draw cars
-        CAR_HEIGHT = 10
+        ch, cl = CAR_HEIGHT*PIXEL_PER_M, CAR_LENGTH*PIXEL_PER_M
         for lane in self.lanes:
             lane_num = self.lanes.index(lane)
             for i in range(len(lane.vehicles)):
                 car = lane.vehicles[i]
                 if car.debug:
-                    rdr.begin_draw = car.x - CAR_LENGTH - 1
+                    rdr.begin_draw = car.x - cl - 1
                 if (0 < car.x - rdr.begin_draw < rdr.WIDTH):
                     # if (i < len(lane.vehicles) - 1):
                     #     car.beep(self.frames*self.dt,lane.vehicles[i+1],(rdr.begin_draw, rdr.begin_draw + WIDTH))
                     draw_x = car.x - rdr.begin_draw
-                    draw_y = empty_space_above + (LANE_HEIGHT+LINE_HEIGHT) * lane_num + int((LANE_HEIGHT-CAR_HEIGHT)/2)
+                    draw_y = empty_space_above + (lh+lw) * lane_num + int((lh-ch)/2)
 
                     color = (A * (car.desiredvel + B), 0, 255 - A * (car.desiredvel + B))
                     if (color[0] >= 255):
@@ -112,9 +110,9 @@ class VisualSimulation(Simulation):
                         color = (0, 255, 0)
                     in_front_dist = car.s0 * PIXEL_PER_M
 
-                    pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x + CAR_LENGTH, draw_y + int(CAR_HEIGHT/2), in_front_dist, 1))
+                    pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x + cl, draw_y + int(ch/2), in_front_dist, 1))
                             
-                    pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x, draw_y, CAR_LENGTH, CAR_HEIGHT))
+                    pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x, draw_y, cl, ch))
                     # window.blit(self.image,(draw_x, draw_y))
                     acc_text = rdr.font2.render(str(round(car.a,1)), True, rdr.white, color)
                     rdr.window.blit(acc_text, (draw_x, draw_y))
@@ -124,9 +122,9 @@ class VisualSimulation(Simulation):
         pygame.draw.rect(rdr.window, rdr.green, pygame.Rect(50, rdr.HEIGHT-40, 40, 40))
         mouse = pygame.mouse.get_pos()
         if 0 < mouse[0] < 40 and rdr.HEIGHT-40 < mouse[1] < rdr.HEIGHT:
-            rdr.begin_draw -= 160*self.dt*PIXEL_PER_M
+            rdr.begin_draw -= 100*self.dt*PIXEL_PER_M
         if 50 < mouse[0] < 90 and rdr.HEIGHT-40 < mouse[1] < rdr.HEIGHT:
-            rdr.begin_draw += 160*self.dt*PIXEL_PER_M
+            rdr.begin_draw += 100*self.dt*PIXEL_PER_M
         window_pos = rdr.font.render(str(round(rdr.begin_draw)), True, rdr.black, rdr.white)
         pygame.draw.rect(rdr.window, rdr.white, pygame.Rect(90,rdr.HEIGHT-40,100,40))
         rdr.window.blit(window_pos, (100, rdr.HEIGHT-20))
@@ -136,7 +134,7 @@ class VisualSimulation(Simulation):
         for event in events:
             if event.type == pygame.QUIT:
                 rdr.window.fill(rdr.white)
-                text = rdr.font.render("Awaiting termination... See console",True,rdr.black,rdr.white)
+                text = rdr.font.render("Awaiting termination... See console", True, rdr.black, rdr.white)
                 rdr.window.blit(text,(0,0))
                 print("Awaiting Renderer.kill or next VisualSimulation call to delete pygamewindow...")
                 pygame.display.update()
