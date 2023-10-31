@@ -2,7 +2,7 @@ from typing import List
 from .Lane import Lane, DataLane
 from .Car import Car, CarData, DataCar, GRINDSET, PIXEL_PER_M
 from .Output import AbstractOutput, FileOutput
-from numpy import mean
+from numpy import mean, power
 import pygame
 import pickle
 import time
@@ -214,7 +214,12 @@ class Simulation:
                 lane.flushVehicles()
                 
                 if (carsgenerated < carcap):
-                    if (lane.generateCarP(p*self.dt,self.frames)):
+                    # Note 1 - p = chance that no car is spawned in one second
+                    # if q is the chance of spawning a car in one frame (there are 1/dt frames in a second)
+                    # We find 1 - p = (1 - q)^(1/dt)
+                    # Rearranging for q gives formula below
+                    probPerFrame =  1 - power((1-p),self.dt)
+                    if (lane.generateCarP(probPerFrame,self.frames)):
                         cars += 1
                         carsgenerated += 1
 

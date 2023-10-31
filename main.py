@@ -33,7 +33,7 @@ for i in range(ITERS):
     sim = VisualSimulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES, dtype=int)*1)
     if (i == 0):
         VisualSimulation.renderer.kill()
-    prob = 0.4 + i*0.4
+    prob = 0.1 + i*0.1
     sim.manyCarsPP(p=prob, carcap=CARCAP)
 
     # Data gathering
