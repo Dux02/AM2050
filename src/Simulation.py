@@ -2,12 +2,24 @@ from typing import List
 from .Lane import Lane, DataLane
 from .Car import Car, CarData, DataCar, GRINDSET, PIXEL_PER_M
 from .Output import AbstractOutput, FileOutput
-from numpy import mean, power
+import numpy as np
 import pygame
 import pickle
 import time
+import matplotlib.pyplot as plt
 
 RENDER = True
+
+np.random.seed(5)
+PS = [1]
+for i in range(1, 500):
+    x = PS[i-1] + np.random.choice([0.1, -0.1])
+    if x > 1:
+        x = 1
+    elif x < 0:
+        x = 0
+    for j in range(20):
+        PS.append(x)
 
 
 def areSafeDist(main_car: 'Car', secondary_car: 'Car', overtaking=1):
@@ -30,13 +42,13 @@ def areSafeDist(main_car: 'Car', secondary_car: 'Car', overtaking=1):
 
 def swapCarOnOvertake(car: Car, exitingLane: Lane, enteringLane: Lane, indices: List[int]):
     if (len(enteringLane.vehicles) == 0 or enteringLane.vehicles[0].x > car.x):
-        enteringLane.vehicles.insert(0,car)
+        enteringLane.vehicles.insert(0, car)
     elif(indices[1] == -1):
         enteringLane.vehicles.append(car)
     else:
         enteringLane.vehicles.insert(indices[1], car)
 
-    car.multiplier = enteringLane.multiplier
+    car.adaptToSpeedLimit(enteringLane.speedlimit)
 
     exitingLane.vehicles.remove(car)
 
@@ -52,6 +64,7 @@ class Simulation:
         self.dt = dt
         self.output = output  # File to write interesting data to
         self.frames = 0
+        self.p = np.random.random()
         if not RENDER:
             pygame.quit()
     
@@ -91,9 +104,13 @@ class Simulation:
 
         if len(desiredLane.vehicles) == 0:
             # We can always go into an empty lane :)
-            desiredLane.vehicles.append(car)
-            car.multiplier = desiredLane.multiplier
-            lane.vehicles.remove(car)
+            swapCarOnOvertake(car, lane, desiredLane, [0,0])
+
+            # desiredLane.vehicles.append(car)
+            # lane.vehicles.remove(car)
+            #
+            # car.adaptToSpeedLimit(desiredLane.speedlimit)
+
             return True
         
         if len(desiredLane.vehicles) == 1:
@@ -105,15 +122,19 @@ class Simulation:
 
         for j in indices:
             otherCar = desiredLane.vehicles[j]
+
+            # The factor here < (in abs) the one in Car.update (when a car will overtake)
+            factor = -1.9
+
             if not areSafeDist(car, otherCar, car.overtaking):
                 # If there is a car, check whether we can overtake it.
                 canOvertake = False
                 break
-            elif otherCar.calcAccel(car) < -0.5 * (120/(3.6*car.desiredvel))**2:
+            elif otherCar.calcAccel(car) < -15 * (120/(3.6*car.multiplier*car.desiredvel))**2:
                 # Don't go if it will cause the car behind to hit his brakes hard
                 canOvertake = False
                 break
-            elif car.calcAccel(otherCar) < -0.5 * ((3.6*car.desiredvel)/120)**2:
+            elif car.calcAccel(otherCar) < factor * ((3.6*car.multiplier*car.desiredvel)/120)**2:
                 # Prevents go if the car in front will cause us to hit our brakes hard
                 canOvertake = False
                 break
@@ -127,18 +148,14 @@ class Simulation:
             #     break
         
         if canOvertake:
-            if (len(desiredLane.vehicles) > 1 and desiredLane.vehicles[indices[1]].x < car.x and indices[1] != -1):
-                print("Someone's search function don't work")
-            if (desiredLane.vehicles[indices[1]].x < car.x and indices[1] != -1 and len(desiredLane.vehicles) != 1) or (car.x < desiredLane.vehicles[indices[0]].x and indices[0] != 0):
-                print("DEATH IS UPON THEE")
+            # if (len(desiredLane.vehicles) > 1 and desiredLane.vehicles[indices[1]].x < car.x and indices[1] != -1):
+            #     print("Someone's search function don't work")
+            # if (desiredLane.vehicles[indices[1]].x < car.x and indices[1] != -1 and len(desiredLane.vehicles) != 1) or (car.x < desiredLane.vehicles[indices[0]].x and indices[0] != 0):
+            #     print("DEATH IS UPON THEE")
             if (len(desiredLane.vehicles) == 1):
-                swapCarOnOvertake(car,lane,desiredLane,[1,1])
-                if not is_sorted(desiredLane):
-                    print("THE PROBLEM IS NOT WHAT IT SEEMS")
+                swapCarOnOvertake(car, lane, desiredLane, [1, 1])
             else:
                 swapCarOnOvertake(car, lane, desiredLane, indices)
-                if not is_sorted(desiredLane):
-                    print("The president has arrived")
             return True
         
         return False
@@ -149,7 +166,7 @@ class Simulation:
             speeds.append(lane.getAvgSpeed())
         if len(speeds) == 0:
             speeds = [0]
-        return mean(speeds)
+        return np.mean(speeds)
 
     def getCars(self) -> int:
         cars = 0
@@ -169,7 +186,7 @@ class Simulation:
                     carsRemoved += 1
         return carsRemoved
     
-    def finishedCar(self,car:Car):
+    def finishedCar(self, car: Car):
         # self.output.write(str((self.frames - car.spawnframe)*self.dt) + '\n')
         self.output.save((self.frames - car.spawnframe)*self.dt)
         return
@@ -201,6 +218,7 @@ class Simulation:
         """Run a complete simulation, generating carcap cars, with p the probability parameter"""
         carsgenerated = 0
         cars = self.getCars()
+        self.p = p
         while (cars > 0 or carsgenerated < carcap):
             data_bit = []  # list to gather data we want to save each frame
             # print(cars)
@@ -218,8 +236,64 @@ class Simulation:
                     # if q is the chance of spawning a car in one frame (there are 1/dt frames in a second)
                     # We find 1 - p = (1 - q)^(1/dt)
                     # Rearranging for q gives formula below
-                    probPerFrame =  1 - power((1-p),self.dt)
-                    if (lane.generateCarP(probPerFrame,self.frames)):
+                    probPerFrame = 1 - np.power((1-p), self.dt)
+                    if lane.generateCarP(probPerFrame, self.frames):
+                        cars += 1
+                        carsgenerated += 1
+
+            if len(data_bit) != 0:
+                self.output.save(data_bit)
+
+        return
+
+    def manyCarsRP(self, carcap=10):
+        """Run a complete simulation, generating carcap cars with
+         a probability spawning system, but p does a random walk."""
+
+        carsgenerated = 0
+        cars = self.getCars()
+        while (cars > 0 or carsgenerated < carcap):
+            data_bit = []  # list to gather data we want to save each frame
+            # print(cars)
+
+            self.p = PS[self.frames]
+
+            self.update()
+            # self.output.save(self.getAvgSpeed()*3.6)
+
+            data_bit.append(self.p)
+
+            # if self.frames*self.dt % 5 == 0:
+            #     if np.random.random() < 0.5:
+            #         self.p += 0.1
+            #     else:
+            #         self.p -= 0.1
+            #
+            # if self.p < 0:
+            #     self.p = 0
+            # elif self.p > 1:
+            #     self.p = 1
+
+            for lane in self.lanes:
+                lanespeed = lane.getAvgSpeed()
+                if lanespeed != 0:
+                    data_bit.append(lanespeed)
+                else:
+                    data_bit.append(self.output.data[-1][self.lanes.index(lane)+1])
+
+                for car in lane.finishedVehicles:
+                    # self.finishedCar(car)
+                    # data_bit.append((self.frames - car.spawnframe)*self.dt)  # time it took to get to the end
+                    cars -= 1
+                lane.flushVehicles()
+
+                if (carsgenerated < carcap):
+                    # Note 1 - p = chance that no car is spawned in one second
+                    # if q is the chance of spawning a car in one frame (there are 1/dt frames in a second)
+                    # We find 1 - p = (1 - q)^(1/dt)
+                    # Rearranging for q gives formula below
+                    probPerFrame = 1 - np.power((1 - self.p), self.dt)
+                    if lane.generateCarP(probPerFrame, self.frames):
                         cars += 1
                         carsgenerated += 1
 
@@ -251,5 +325,9 @@ class DataSimulation(Simulation):
     
     def manyCarsPP(self, p: float, carcap=10):
         super().manyCarsPP(p, carcap)
+        pickle.dump(self.carData,self.output.file)
+
+    def manyCarsRP(self, carcap=10):
+        super().manyCarsRP(carcap)
         pickle.dump(self.carData,self.output.file)
     

@@ -2,7 +2,8 @@ from .Car import Car, DataCar, PIXEL_PER_M
 from numpy import linspace, mean
 from random import randint, random
 
-SPAWNSAFETYDIST = 10 * PIXEL_PER_M
+SPAWNSAFETYDIST = 1.6 * 120/3.6 * PIXEL_PER_M  # 1.6 seconds
+
 
 class Lane:
     def __init__(self, cars: int = 0):
@@ -13,23 +14,24 @@ class Lane:
         self.timeSinceLastCarGenerated = 0
         self.maxvel = 120 / 3.6
         self.signs = 0
-        self.multiplier = 1
+        self.speedlimit = 120  # kph
 
     def update(self, dt: float, frame: int) -> list[Car]:
 
-        # ------ DYNAMIC BORDS BETA -------
+        # ------ DYNAMIC SIGNS -------
         if False and int(frame*dt) % 10 == 0:  # check every once in a while
-            if 0 < self.getAvgSpeed()*3.6 <= 50:
-                # Traffic! Turn on the dynamic bords: max speed is now 50 kph
-                self.multiplier = 50/120
+            traffic_speed = 100  # kph
+            if 0 < self.getAvgSpeed()*3.6 <= traffic_speed:
+                # Traffic! Turn on the dynamic signs: max speed is now 50 kph
+                self.speedlimit = traffic_speed+10  # > traffic_speed so that we don't stay slow forever
                 for car in self.vehicles:
-                    car.multiplier = self.multiplier
+                    car.adaptToSpeedLimit(self.speedlimit)
 
-            elif self.multiplier != 1:
-                # No traffic, we can turn off bords
-                self.multiplier = 1
+            elif self.speedlimit != 120:
+                # No traffic, we can turn off signs
+                self.speedlimit = 120
                 for car in self.vehicles:
-                    car.multiplier = self.multiplier
+                    car.multiplier = 1
 
         numOfCars = len(self.vehicles)
         if (numOfCars == 0):
@@ -68,7 +70,7 @@ class Lane:
     def getAvgDesiredSpeeds(self) -> float:
         speeds = []
         for car in self.vehicles:
-                speeds.append(car.desiredvel)
+                speeds.append(car.multiplier*car.desiredvel)
         if len(speeds) == 0:
             speeds = [0]
         return mean(speeds)
@@ -131,13 +133,15 @@ class Lane:
                 self.vehicles.insert(0, Car(spawnframe=frame))
                 self.timeSinceLastCarGenerated = frame
                 return True
-            if self.vehicles[0].x < SPAWNSAFETYDIST:
+            if self.vehicles[0].x < self.vehicles[0].vel * 1.6 * PIXEL_PER_M:  # 1.6 seconds safety distance
                 return False
             newCar = Car(spawnframe=frame)
-            if newCar.desiredvel > self.vehicles[0].vel:
+            newCar.adaptToSpeedLimit(self.speedlimit)
+            if newCar.multiplier*newCar.desiredvel > self.vehicles[0].vel:
                 # To avoid crashes, the cars come in with the same speed as the car in front
                 # However, it shouldn't make tractors go 130 because the car in front is doing so...
                 newCar.vel = self.vehicles[0].vel
+
             self.vehicles.insert(0, newCar)
             self.timeSinceLastCarGenerated = frame
             return True

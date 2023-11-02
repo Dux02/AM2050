@@ -35,7 +35,7 @@ class Renderer():
             Renderer.window = pygame.display.set_mode((Renderer.WIDTH, Renderer.HEIGHT))
             Renderer.window.fill(Renderer.white)
             Renderer.font = pygame.font.Font("freesansbold.ttf",21)
-            Renderer.font2 = pygame.font.Font("freesansbold.ttf",8)
+            Renderer.font2 = pygame.font.Font("freesansbold.ttf",10)
     
     @staticmethod
     def kill():
@@ -52,14 +52,15 @@ class VisualSimulation(Simulation):
             VisualSimulation.renderer = Renderer()
         return
     
-    def __init__(self, output: AbstractOutput, dt: float = 1, lanes: int = 1, cars: list[int] = [1]):
+    def __init__(self, output: AbstractOutput, dt: float = 1, lanes: int = 1, cars: list[int] = [1], pretty=False):
         super().__init__(output, dt, lanes, cars)
         self.initRenderer()
         self.rendering = VisualSimulation.renderer.RENDER
         self.avspeeds, self.avdesspeeds = 0, 0
+        self.pretty = pretty
 
         # Tree locations
-        numTrees = 500
+        numTrees = 50
         rdr = VisualSimulation.renderer
         self.trees = []
 
@@ -90,31 +91,37 @@ class VisualSimulation(Simulation):
     def render(self):
         rdr: Renderer = VisualSimulation.renderer
         rdr.window.fill(rdr.white)
-        if (int((self.frames-1)*self.dt) % 10 == 0):
-            # Update statistics
-            self.avdesspeeds = str([round(lane.getAvgDesiredSpeeds()*3.6) for lane in self.lanes])
-            self.avspeeds = str([round(lane.getAvgSpeed() * 3.6) for lane in self.lanes])
-        # Draw statistics
-        pygame.draw.rect(rdr.window, rdr.white, pygame.Rect(0, 0, rdr.WIDTH, 90))
-        avd_text = rdr.font.render("Avg desired speeds: " + self.avdesspeeds + " km/h",
-                                    True, rdr.black,rdr.white)
-        av_text = rdr.font.render("Avg speeds: " + self.avspeeds + " km/h",
-                                    True, rdr.black, rdr.white)
-        # av_text = font.render("No. of cars: "+ str(self.getCars()) + " cars",True,black,white)
-        rdr.window.blit(avd_text, (0, 0))
-        rdr.window.blit(av_text, (0, 30))
+        if not self.pretty:
+            if (int((self.frames-1)*self.dt) % 10 == 0):
+                # Update statistics
+                self.avdesspeeds = str([round(lane.getAvgDesiredSpeeds()*3.6) for lane in self.lanes])
+                self.avspeeds = str([round(lane.getAvgSpeed() * 3.6) for lane in self.lanes])
+            # Draw statistics
+            pygame.draw.rect(rdr.window, rdr.white, pygame.Rect(0, 0, rdr.WIDTH, 90))
+            avd_text = rdr.font.render("Avg desired speeds: " + self.avdesspeeds + " km/h",
+                                        True, rdr.black,rdr.white)
+            av_text = rdr.font.render("Avg speeds: " + self.avspeeds + " km/h",
+                                        True, rdr.black, rdr.white)
+            # av_text = font.render("No. of cars: "+ str(self.getCars()) + " cars",True,black,white)
+            rdr.window.blit(avd_text, (0, 0))
+            rdr.window.blit(av_text, (0, 30))
 
-        text = "Speed limits: " + str([round(120*lane.multiplier) for lane in self.lanes])
-        limits = rdr.font.render(text, True, rdr.black, rdr.white)
-        rdr.window.blit(limits, (int(rdr.WIDTH/2), 0))
+            text = "Speed limits: " + str([round(lane.speedlimit) for lane in self.lanes])
+            limits = rdr.font.render(text, True, rdr.black, rdr.white)
+            rdr.window.blit(limits, (int(rdr.WIDTH/2), 0))
 
-        clock = rdr.font.render("T+" + str(round(self.frames*self.dt)) + " s",True, rdr.black, rdr.white)
-        rdr.window.blit(clock, (0, 60))
+            text = "p = " + str(round(self.p,2))
+            p = rdr.font.render(text, True, rdr.black, rdr.white)
+            rdr.window.blit(p, (int(rdr.WIDTH/2), 30))
 
-        # # Draw trees
-        # for (x, y, image) in self.trees:
-        #     if 0 < x - rdr.begin_draw < rdr.WIDTH:
-        #         rdr.window.blit(image, (x - rdr.begin_draw, y))
+            clock = rdr.font.render("T+" + str(round(self.frames*self.dt)) + " s", True, rdr.black, rdr.white)
+            rdr.window.blit(clock, (0, 60))
+
+        if self.pretty:
+            # Draw trees
+            for (x, y, image) in self.trees:
+                if 0 < x - rdr.begin_draw < rdr.WIDTH:
+                    rdr.window.blit(image, (x - rdr.begin_draw, y))
 
         # Draw lanes
         n = len(self.lanes)
@@ -139,7 +146,8 @@ class VisualSimulation(Simulation):
                     draw_x = car.x - rdr.begin_draw
                     draw_y = empty_space_above + (lh+lw) * lane_num + int((lh-ch)/2)
 
-                    color = (A * (car.desiredvel + B), 0, 255 - A * (car.desiredvel + B))
+                    x = A * (car.multiplier*car.desiredvel + B)
+                    color = (x, 0, 255 - x)
                     if (color[0] >= 255):
                         color = (255, 0, 0)
                     elif (color[0] <= 0):
@@ -152,9 +160,10 @@ class VisualSimulation(Simulation):
                     pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x, draw_y, cl, ch))
                     # window.blit(self.image,(draw_x, draw_y))
 
-                    # acc_text = rdr.font2.render(str(round(car.a,1)), True, rdr.white, color)
-                    # rdr.window.blit(acc_text, (draw_x, draw_y))
-                    # pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x + cl, draw_y + int(ch / 2), in_front_dist, 1))
+                    if not self.pretty:
+                        acc_text = rdr.font2.render(str(round(car.a,1)), True, rdr.white, color)
+                        rdr.window.blit(acc_text, (draw_x, draw_y))
+                        pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x + cl, draw_y + int(ch / 2), in_front_dist, 1))
 
                     # Draw buttons and check if there being hovered over
         pygame.draw.rect(rdr.window, rdr.red, pygame.Rect(0, rdr.HEIGHT-40, 40, 40))

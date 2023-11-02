@@ -13,16 +13,17 @@ beeps = [pygame.mixer.Sound("media/beep"+str(i+1)+".wav") for i in range(10)]
 V_DESIRED = 120 / 3.6  # m/s
 SIGMA = 2  # Standard deviation of the random initial velocities
 GRINDSET = 0.1  # Standard dev. of random tick updates
-GUSTAVO = 30  # Standard dev. of desired velocities (kph)
+GUSTAVO = 15  # Standard dev. of desired velocities (kph)
 V_MIN = 60 / 3.6
-CAR_LENGTH = 2  # meters
-CAR_HEIGHT = 1  # meters
-PIXEL_PER_M = 10  # pixels per meter
-LANE_HEIGHT, LINE_HEIGHT = 2, 0.1  # meters
+factor = 1
+CAR_LENGTH = 3*factor  # meters
+CAR_HEIGHT = 1*factor  # meters
+PIXEL_PER_M = 10/factor  # pixels per meter
+LANE_HEIGHT, LINE_HEIGHT = 2*factor, 0.1*factor  # meters
 
 alphabet = 'abcdefhijklmnopqrstuvwxyz0123456789'
 def generateID() -> str:
-    return ''.join(choices(alphabet,k=8)) # Picks 8 letters at random, generally v. low collision chance
+    return ''.join(choices(alphabet, k=8))  # Picks 8 letters at random, generally v. low collision chance
 
 class Car:
     a_max = 1.44*3  # m/s^2
@@ -61,24 +62,7 @@ class Car:
         # Find self.s
         self.determineGap(infront)
 
-        # Do we want to merge?
-        if -0.5 * (120/(3.6 * self.multiplier*self.desiredvel))**2 < self.a < 0.5 * (120/(3.6*self.multiplier*self.desiredvel))**2:
-            # Used to be dependent on relation between desiredvel and vel but
-            # that doesn't work in traffic (no cars would merge)
-            # Now we merge when we're not accelerating much
-            self.overtaking = -1
-
-        # Do we want to overtake?
-        if infront is not None:
-            # OVTF = 1.2, the factor time s0. Note this is similar to the previous code w/ a min. 3 second headway instead.
-            # if (s < 1.2 * self.s0 and self.vel < 0.95 * self.desiredvel and self.desiredvel > infront.vel):
-            #     self.overtaking = 1
-
-            # The constant -1 here is related to the constant -0.5 in Simulation.overtakingLogic
-            if self.a < -1 * (120/(3.6 * self.multiplier*self.desiredvel))**2 and self.multiplier*self.desiredvel > infront.vel:
-                # if we're slowing down, we want to overtake
-                self.overtaking = 1
-        
+        # Update speed and check if we've crashed
         crash = self.advancedSpeed(dt, infront)
         if (crash):
             print(round(self.x), self.vel, round(self.a,3), self.s0)
@@ -86,13 +70,36 @@ class Car:
             Car.debugcounter += 1
             if (Car.debugcounter == 10):
                 self.debug = True
-            
+
+        # Do we want to overtake?
+        if infront is not None:
+            # OVTF = 1.2, the factor time s0. Note this is similar to the previous code w/ a min. 3 second headway instead.
+            # if (s < 1.2 * self.s0 and self.vel < 0.95 * self.desiredvel and self.desiredvel > infront.vel):
+            #     self.overtaking = 1
+
+            # The factor here is related to the factor in Simulation.overtakingLogic
+            factor = -2
+            if ((self.a < factor * (120 / (3.6 * self.multiplier * self.desiredvel)) ** 2
+                 or self.vel < 0.92 * self.multiplier * self.desiredvel)
+                    and self.multiplier * self.desiredvel > infront.vel):
+                # if we're slowing down or going slow, and we are able to accelerate, lets overtake
+                self.overtaking = 1
+
+        # Do we want to merge?
+        if (-0.5 * (120 / (3.6 * self.multiplier * self.desiredvel)) ** 2
+                < self.a < 0.5 * (120 / (3.6 * self.multiplier * self.desiredvel)) ** 2):
+            # Used to be dependent on relation between desiredvel and vel but
+            # that doesn't work in traffic (no cars would merge)
+            # Now we merge when we're not accelerating much
+            self.overtaking = -1
+
         if (self.vel < 0):
             self.vel = 0
         self.x += self.vel*dt*PIXEL_PER_M  # x is in pixels, vel is in m/s
 
     def determineGap(self, infront):
-        self.s = 100000
+        """Set self.s to the gap with the car in front, in meters"""
+        self.s = 1000000
         if infront is not None:
             s = (infront.x - self.x) / PIXEL_PER_M - CAR_LENGTH
             self.s = s
@@ -147,13 +154,17 @@ class Car:
     def calcAccel(self, infront: 'Car') -> float:
         """Calculates and returns acceleration for self with infront the car infront"""
         self.s0 = self.desiredDist(infront)
-        alpha = self.s0 / self.s
+        if infront is not None:
+            s = infront.x - self.x
+        else:
+            s = self.s
+        alpha = PIXEL_PER_M * self.s0 / s
         return self.a_max * (1 - (self.vel / (self.multiplier*self.desiredvel)) ** 4 - alpha ** 2)
 
     def desiredDist(self, infront: Union['Car', None] = None) -> float:
         """ Returns the desired distance of the car based on the car in front of it, in meters.
             This follows the Intelligent Driver Model (IDM), with a reaction time of 1.6 seconds,
-            a jam distance of 2 meters, and a difference-in-speed dependent term.
+            a jam distance of 0.5 meters, and a difference-in-speed dependent term.
             In the limiting case delta_v <= 0, the desired distance is the jam distance.
             In the limiting case delta_v = self.vel, we find the distance scales quadratically with speed."""
         delta_v = 0
@@ -161,7 +172,7 @@ class Car:
         if (infront is not None):
             delta_v = self.vel - infront.vel
 
-        return 2 + max(self.vel*1.6 + self.vel*delta_v/self.sqrt_ab,0)
+        return 0.5 + max(0, self.vel*1.6 + self.vel*delta_v/self.sqrt_ab)
         # return max(2, 2 + self.vel*1.6 + self.vel*delta_v/self.sqrt_ab)  # linear correction (easier to explain)
 
     def inDist(self, dist: Union[float, Tuple[float,float]], othercar: 'Car') -> bool:
@@ -201,6 +212,12 @@ class Car:
                 beep = choice(beeps)
                 pygame.mixer.Sound.play(beep)
         return
+
+    def adaptToSpeedLimit(self, speedlimit):
+        """Given a speed limit, check whether we should adapt our desired velocity to it"""
+        if self.vel*3.6 <= speedlimit-10 and self.desiredvel >= speedlimit:
+            # Only slow down car if he's in traffic (slow) and is going faster than the speed limit
+            self.multiplier = speedlimit / 120
 
 class CarData:
     def __init__(self, car: 'DataCar') -> None:

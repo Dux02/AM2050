@@ -15,10 +15,9 @@ def moving_average(a, n=3):
 
 ps, average_times = [], []
 DT = 0.5  # DT=0.2 gives crashes (at prob=1), even for one lane!
-LANES = 4
-CARCAP = 1000
-ITERS = 5
-
+LANES = 3
+CARCAP = 2000
+ITERS = 1
 
 saving_data = []
 # plt.figure()
@@ -30,11 +29,12 @@ for i in range(ITERS):
 
     # For visualisation
     output = AbstractOutput()
-    sim = VisualSimulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES, dtype=int)*1)
-    if (i == 0):
+    sim = VisualSimulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES, dtype=int)*1, pretty=True)
+    if i == 0:
         VisualSimulation.renderer.kill()
-    prob = 0.1 + i*0.1
-    sim.manyCarsPP(p=prob, carcap=CARCAP)
+
+    sim.p = 1  # Lot of traffic
+    sim.manyCarsRP(carcap=CARCAP)
 
     # Data gathering
     saving_data.append(output.data)
@@ -45,7 +45,7 @@ for i in range(ITERS):
     # plt.plot(moving_average(output.data, 50), label=str(i)+" lanes")
     # f.close()
     if (i % 1 == 0):
-        print("I did loop", i)
+        print("I did loop", i+1)
 """
 plt.legend()
 plt.xlabel("Car Index")
@@ -53,8 +53,9 @@ plt.ylabel("Time taken")
 plt.show()
 """
 #print(saving_data)
-f = open('./data/'+str(np.datetime64('today'))+'- p variation, carcap ' +str(CARCAP) + ', iters '
-         + str(ITERS) + ', lanes ' + str(LANES), 'wb')
+# f = open('./data/'+str(np.datetime64('today'))+'- p variation, carcap ' +str(CARCAP) + ', iters '
+#          + str(ITERS) + ', lanes ' + str(LANES), 'wb')
+f = open('./data/data', 'wb')
 pickle.dump(saving_data, f)
 f.close()
 #df = pd.DataFrame(np.array(saving_data))
