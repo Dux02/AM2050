@@ -2,10 +2,11 @@ from numpy.random import f
 from src.Simulation import Simulation, DataSimulation
 from src.VisualSimulation import VisualSimulation
 from src.Output import AbstractOutput, FileOutput
+from src.Car import GUSTAVO, SPEEDCAMERA, HEADWAYTIME, setHEADWAYTIME
+from src.Lane import DYNAMIC
 import numpy as np
 import pandas as pd
 import pickle
-
 
 def moving_average(a, n=3):
     ret = np.cumsum(a, dtype=float)
@@ -14,10 +15,10 @@ def moving_average(a, n=3):
 
 
 ps, average_times = [], []
-DT = 0.5  # DT=0.2 gives crashes (at prob=1), even for one lane!
-LANES = 3
-CARCAP = 2000
-ITERS = 1
+DT = 0.001
+LANES = 5
+DURATION = 1000
+ITERS = 4
 
 saving_data = []
 # plt.figure()
@@ -29,12 +30,14 @@ for i in range(ITERS):
 
     # For visualisation
     output = AbstractOutput()
-    sim = VisualSimulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES, dtype=int)*1, pretty=True)
-    if i == 0:
+    sim = VisualSimulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES, dtype=int)*1, pretty=False)
+    if i == -1:
         VisualSimulation.renderer.kill()
 
-    sim.p = 1  # Lot of traffic
-    sim.manyCarsRP(carcap=CARCAP)
+    sim.p = 1
+    hdway = 0.1 + 0.1 * i
+    setHEADWAYTIME(hdway)
+    sim.manyCarsTimedRP(time=DURATION)
 
     # Data gathering
     saving_data.append(output.data)
@@ -46,16 +49,26 @@ for i in range(ITERS):
     # f.close()
     if (i % 1 == 0):
         print("I did loop", i+1)
+
 """
 plt.legend()
 plt.xlabel("Car Index")
 plt.ylabel("Time taken")
 plt.show()
 """
+
 #print(saving_data)
 # f = open('./data/'+str(np.datetime64('today'))+'- p variation, carcap ' +str(CARCAP) + ', iters '
 #          + str(ITERS) + ', lanes ' + str(LANES), 'wb')
-f = open('./data/data', 'wb')
+# f = open('./data/data', 'wb')
+string = ('./data/' + 'duration' + str(DURATION) + ',iters' + str(ITERS) + ',lanes' + str(LANES) + ',dt'+str(DT)
+          + ',gustavo' + str(GUSTAVO) + ',hdway'+str(HEADWAYTIME))
+if DYNAMIC:
+    string += ',dynamic'
+if SPEEDCAMERA:
+    string += ',wspeedcamera'
+
+f = open(string, 'wb')
 pickle.dump(saving_data, f)
 f.close()
 #df = pd.DataFrame(np.array(saving_data))

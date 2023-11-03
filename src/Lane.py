@@ -1,29 +1,29 @@
-from .Car import Car, DataCar, PIXEL_PER_M
+from .Car import Car, DataCar, PIXEL_PER_M, CAR_LENGTH, V_DESIRED
 from numpy import linspace, mean
 from random import randint, random
 
-SPAWNSAFETYDIST = 1.6 * 120/3.6 * PIXEL_PER_M  # 1.6 seconds
+TRAFFICSPEEDLIMIT = 104  # kph
+LANELENGTH = 5000  # m
+DYNAMIC = False  # Whether the dynamic boards turn on
 
 
 class Lane:
     def __init__(self, cars: int = 0):
-        self.length = 5000 * PIXEL_PER_M  # 5 km
+        self.length = LANELENGTH * PIXEL_PER_M  # 5 km
         xcoords = linspace(0, self.length, cars)
         self.vehicles: list[Car] = [Car(xcoords[i]) for i in range(cars)]
         self.finishedVehicles: list[Car] = []
         self.timeSinceLastCarGenerated = 0
-        self.maxvel = 120 / 3.6
         self.signs = 0
-        self.speedlimit = 120  # kph
+        self.speedlimit = V_DESIRED*3.6  # kph
 
     def update(self, dt: float, frame: int) -> list[Car]:
 
         # ------ DYNAMIC SIGNS -------
-        if False and int(frame*dt) % 10 == 0:  # check every once in a while
-            traffic_speed = 100  # kph
-            if 0 < self.getAvgSpeed()*3.6 <= traffic_speed:
-                # Traffic! Turn on the dynamic signs: max speed is now 50 kph
-                self.speedlimit = traffic_speed+10  # > traffic_speed so that we don't stay slow forever
+        if False and DYNAMIC and int(frame*dt) % 10 == 0:  # check every once in a while
+            if 0 < self.getAvgSpeed()*3.6 <= TRAFFICSPEEDLIMIT:
+                # Traffic! Turn on the dynamic signs: max speed is now traffic_speed+10 kph
+                self.speedlimit = TRAFFICSPEEDLIMIT+15  # > traffic_speed so that we don't stay slow forever
                 for car in self.vehicles:
                     car.adaptToSpeedLimit(self.speedlimit)
 
@@ -56,7 +56,7 @@ class Lane:
         return carsOvertaking
 
     def flushVehicles(self):
-        '''Removes finished vehicles from memory'''
+        """Removes finished vehicles from memory"""
         self.finishedVehicles = []
     
     def getAvgSpeed(self) -> float:
@@ -75,7 +75,7 @@ class Lane:
             speeds = [0]
         return mean(speeds)
     
-    def findCarsAround(self,x): 
+    def findCarsAround(self, x):
         # We're looking for the car in desiredLane to the left-back of car,
         # and we'll save its index @ desiredIndex
         checkList = self.vehicles
@@ -114,7 +114,7 @@ class Lane:
         if ((delta_i % timestep == offset or delta_i >= 2*timestep)):
             #TODO: Make this more efficient? If we asssure index 0 is closest to start
             for car in self.vehicles:  
-                if (car.x < SPAWNSAFETYDIST):
+                if (car.x < 100):
                     return False
             self.vehicles.insert(0,Car(spawnframe=frame))
             self.timeSinceLastCarGenerated = frame
@@ -133,7 +133,7 @@ class Lane:
                 self.vehicles.insert(0, Car(spawnframe=frame))
                 self.timeSinceLastCarGenerated = frame
                 return True
-            if self.vehicles[0].x < self.vehicles[0].vel * 1.6 * PIXEL_PER_M:  # 1.6 seconds safety distance
+            if self.vehicles[0].x < CAR_LENGTH*PIXEL_PER_M + self.vehicles[0].vel * 0.5 * PIXEL_PER_M:  # 0 seconds safety distance
                 return False
             newCar = Car(spawnframe=frame)
             newCar.adaptToSpeedLimit(self.speedlimit)
