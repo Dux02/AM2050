@@ -1,7 +1,8 @@
 from typing import Union
 from .Simulation import Simulation
 from .Output import AbstractOutput
-from .Car import V_MIN, V_DESIRED, GUSTAVO, PIXEL_PER_M, CAR_LENGTH, CAR_HEIGHT, LANE_HEIGHT, LINE_HEIGHT
+from .Car import (V_MIN, V_DESIRED, GUSTAVO, PIXEL_PER_M, CAR_LENGTH, CAR_HEIGHT, LANE_HEIGHT, LINE_HEIGHT,
+                  SPEEDCAMERALOCATION, SPEEDCAMERA)
 import pygame
 import numpy as np
 import time
@@ -132,6 +133,14 @@ class VisualSimulation(Simulation):
             y = empty_space_above + lh + (lh+lw)*i
             pygame.draw.rect(rdr.window, rdr.black, pygame.Rect(0, y, rdr.WIDTH, lw))
 
+        # Draw speed camera
+        if SPEEDCAMERA:
+            x = SPEEDCAMERALOCATION * PIXEL_PER_M
+            if 0 < x - rdr.begin_draw < rdr.WIDTH:
+                pygame.draw.rect(rdr.window, rdr.grey, pygame.Rect(x - rdr.begin_draw, empty_space_above-30, 1, 30))
+                pygame.draw.rect(rdr.window, rdr.grey, pygame.Rect(x - rdr.begin_draw-5, empty_space_above-30-10, 10, 10))
+                pygame.draw.circle(rdr.window, rdr.black, (x - rdr.begin_draw, empty_space_above-30-5), 2)
+
         # Draw cars
         ch, cl = CAR_HEIGHT*PIXEL_PER_M, CAR_LENGTH*PIXEL_PER_M
         for lane in self.lanes:
@@ -141,8 +150,8 @@ class VisualSimulation(Simulation):
                 if car.debug:
                     rdr.begin_draw = car.x - cl - 1
                 if (0 < car.x - rdr.begin_draw < rdr.WIDTH):
-                    # if (i < len(lane.vehicles) - 1):
-                    #     car.beep(self.frames*self.dt,lane.vehicles[i+1],(rdr.begin_draw, rdr.begin_draw + WIDTH))
+                    if (i < len(lane.vehicles) - 1 and self.pretty):
+                        car.beep(self.frames*self.dt,lane.vehicles[i+1],(rdr.begin_draw, rdr.begin_draw + WIDTH))
                     draw_x = car.x - rdr.begin_draw
                     draw_y = empty_space_above + (lh+lw) * lane_num + int((lh-ch)/2)
 
@@ -158,14 +167,14 @@ class VisualSimulation(Simulation):
                     in_front_dist = car.s0 * PIXEL_PER_M
 
                     pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x, draw_y, cl, ch))
-                    # window.blit(self.image,(draw_x, draw_y))
+                    # rdr.window.blit(rdr.image, (draw_x, draw_y))
 
                     if not self.pretty:
-                        acc_text = rdr.font2.render(str(round(car.a,1)), True, rdr.white, color)
+                        acc_text = rdr.font2.render(str(round(car.vel*3.6)), True, rdr.white, color)
                         rdr.window.blit(acc_text, (draw_x, draw_y))
                         pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x + cl, draw_y + int(ch / 2), in_front_dist, 1))
 
-                    # Draw buttons and check if there being hovered over
+        # Draw buttons and check if there being hovered over
         pygame.draw.rect(rdr.window, rdr.red, pygame.Rect(0, rdr.HEIGHT-40, 40, 40))
         pygame.draw.rect(rdr.window, rdr.green, pygame.Rect(50, rdr.HEIGHT-40, 40, 40))
         mouse = pygame.mouse.get_pos()

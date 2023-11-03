@@ -1,6 +1,7 @@
 from typing import List
-from .Lane import Lane, DataLane
-from .Car import Car, CarData, DataCar, GRINDSET, PIXEL_PER_M
+from .Lane import Lane, DataLane, TRAFFICSPEEDLIMIT, DYNAMIC
+from .Car import (Car, CarData, DataCar, GRINDSET, PIXEL_PER_M, PERSONALFACTOR, XENOFACTOR, DESIREDVELFACTOR,
+                  MINIMUMDISTANCEFACTOR)
 from .Output import AbstractOutput, FileOutput
 import numpy as np
 import pygame
@@ -12,13 +13,13 @@ RENDER = True
 
 np.random.seed(5)
 PS = [1]
-for i in range(1, 500):
-    x = PS[i-1] + np.random.choice([0.1, -0.1])
+for i in range(1, 100000):
+    x = PS[-1] + np.random.choice([0.1, -0.1])
     if x > 1:
         x = 1
     elif x < 0:
         x = 0
-    for j in range(20):
+    for j in range(150):
         PS.append(x)
 
 
@@ -36,9 +37,10 @@ def areSafeDist(main_car: 'Car', secondary_car: 'Car', overtaking=1):
         scale = 1
 
     SafetyDist = scale * 3 * delta_v * PIXEL_PER_M + 2 * PIXEL_PER_M
-    if main_car.inDist(SafetyDist,secondary_car):
+    if main_car.inDist(SafetyDist, secondary_car):
         return False
     return True
+
 
 def swapCarOnOvertake(car: Car, exitingLane: Lane, enteringLane: Lane, indices: List[int]):
     if (len(enteringLane.vehicles) == 0 or enteringLane.vehicles[0].x > car.x):
@@ -59,7 +61,7 @@ def is_sorted(lane: Lane):
 
 class Simulation:
     # dt given in seconds
-    def __init__(self, output: AbstractOutput, dt:float = 1, lanes: int = 1, cars: list[int] = [1]):
+    def __init__(self, output: AbstractOutput, dt: float = 1, lanes: int = 1, cars: list[int] = [1]):
         self.lanes: list[Lane] = [Lane(cars[i]) for i in range(lanes)]
         self.dt = dt
         self.output = output  # File to write interesting data to
@@ -70,11 +72,24 @@ class Simulation:
     
     def update(self):
         carsOvertaking =[]
+        replace = True
         for lane in self.lanes:
             i = self.lanes.index(lane)
             carsOvertaking.append(lane.update(self.dt, self.frames))
-            if (not is_sorted(lane)):
-                print("Scooby dooby doo")
+
+            if DYNAMIC and self.frames*self.dt % 10 == 0:
+                if 0 < lane.getAvgSpeed() <= TRAFFICSPEEDLIMIT:
+                    replace = False  # as soon as we have one slow lane, all lanes get slowed
+                    for elene in self.lanes:
+                        elene.speedlimit = TRAFFICSPEEDLIMIT + 15
+                        for car in elene.vehicles:
+                            car.adaptToSpeedLimit(elene.speedlimit)  # when cars check to merge and such they currently use the wrong desiredvel
+
+        if DYNAMIC and replace:
+            for lane in self.lanes:
+                lane.speedlimit = 120
+                for car in lane.vehicles:
+                    car.multiplier = 1
         
         for i in range(len(self.lanes)):
             if len(carsOvertaking[i]) == 0:
@@ -82,8 +97,6 @@ class Simulation:
             for car in carsOvertaking[i]:
                 self.overtakingLogic(car, i, self.lanes[i])
                 car.overtaking = 0
-            if (not is_sorted(self.lanes[i])):
-                print("We're in the bonezone now!")
         
         self.frames += 1    
         if (self.frames % int(10/self.dt) == 0):
@@ -123,19 +136,24 @@ class Simulation:
         for j in indices:
             otherCar = desiredLane.vehicles[j]
 
-            # The factor here < (in abs) the one in Car.update (when a car will overtake)
-            factor = -1.9
-
             if not areSafeDist(car, otherCar, car.overtaking):
                 # If there is a car, check whether we can overtake it.
                 canOvertake = False
                 break
-            elif otherCar.calcAccel(car) < -15 * (120/(3.6*car.multiplier*car.desiredvel))**2:
+            elif otherCar.calcAccel(car) < XENOFACTOR * (120 / (3.6 * car.multiplier * car.desiredvel))**2:
                 # Don't go if it will cause the car behind to hit his brakes hard
                 canOvertake = False
                 break
-            elif car.calcAccel(otherCar) < factor * ((3.6*car.multiplier*car.desiredvel)/120)**2:
+            elif car.calcAccel(otherCar) < (PERSONALFACTOR+0.2) * ((3.6 * car.multiplier * car.desiredvel) / 120)**2:
                 # Prevents go if the car in front will cause us to hit our brakes hard
+                canOvertake = False
+                break
+            elif (car.overtaking == -1 and indices.index(j) == 1
+                  and otherCar.vel < DESIREDVELFACTOR*car.desiredvel*(desiredLane.speedlimit/120)
+                  and car.x - otherCar.x < MINIMUMDISTANCEFACTOR*car.desiredDist(otherCar)*PIXEL_PER_M
+                  and car.vel > otherCar.vel):
+                # Don't go if we will want to overtake as soon as we've merged, but we should of course
+                # merge if the right lane is going faster
                 canOvertake = False
                 break
             # elif car.overtaking == 1 and car.inDist((1.5*120 / (3.6*car.desiredvel) *otherCar.desiredDist(car),0),otherCar):
@@ -296,6 +314,60 @@ class Simulation:
                     if lane.generateCarP(probPerFrame, self.frames):
                         cars += 1
                         carsgenerated += 1
+
+            if len(data_bit) != 0:
+                self.output.save(data_bit)
+
+        return
+
+    def manyCarsTimedRP(self, time=100):
+        """Run a complete simulation for time simulated seconds with random walk p"""
+        cars = self.getCars()
+        while self.dt*self.frames < time:
+            data_bit = []  # list to gather data we want to save each frame
+            # print(cars)
+
+            self.p = PS[self.frames]
+
+            self.update()
+            # self.output.save(self.getAvgSpeed()*3.6)
+
+            data_bit.append(self.p)
+
+            # if self.frames*self.dt % 5 == 0:
+            #     if np.random.random() < 0.5:
+            #         self.p += 0.1
+            #     else:
+            #         self.p -= 0.1
+            #
+            # if self.p < 0:
+            #     self.p = 0
+            # elif self.p > 1:
+            #     self.p = 1
+
+            for lane in self.lanes:
+                lanespeed = lane.getAvgSpeed()
+                if lanespeed != 0:
+                    data_bit.append(lanespeed)
+                else:
+                    data_bit.append(self.output.data[-1][self.lanes.index(lane)+1])
+
+                for car in lane.finishedVehicles:
+                    # self.finishedCar(car)
+                    # data_bit.append((self.frames - car.spawnframe)*self.dt)  # time it took to get to the end
+                    cars -= 1
+                lane.flushVehicles()
+
+                # Note 1 - p = chance that no car is spawned in one second
+                # if q is the chance of spawning a car in one frame (there are 1/dt frames in a second)
+                # We find 1 - p = (1 - q)^(1/dt)
+                # Rearranging for q gives formula below
+                probPerFrame = 1 - np.power((1 - self.p), self.dt)
+                if lane.generateCarP(probPerFrame, self.frames):
+                    cars += 1
+
+            for lane in self.lanes:
+                data_bit.append(len(lane.vehicles))
 
             if len(data_bit) != 0:
                 self.output.save(data_bit)

@@ -1,8 +1,8 @@
 # Car class
 from typing import Union, Tuple
 from numpy.random import normal
-from random import choice,choices
-from numpy import sqrt, sign, exp
+from random import choice, choices
+from numpy import sqrt, sign, exp, random
 from numbers import Number
 
 import pygame
@@ -15,11 +15,21 @@ SIGMA = 2  # Standard deviation of the random initial velocities
 GRINDSET = 0.1  # Standard dev. of random tick updates
 GUSTAVO = 15  # Standard dev. of desired velocities (kph)
 V_MIN = 60 / 3.6
-factor = 1
-CAR_LENGTH = 3*factor  # meters
+factor = 2  # used for scaling car & lane size nicely
+CAR_LENGTH = 3  # meters
 CAR_HEIGHT = 1*factor  # meters
 PIXEL_PER_M = 10/factor  # pixels per meter
 LANE_HEIGHT, LINE_HEIGHT = 2*factor, 0.1*factor  # meters
+PERSONALFACTOR, XENOFACTOR = -200, -200  # how hard we will let ourselves or others brake when changing lanes
+MERGEFACTOR = 0.1  # how close to zero should acceleration be to want to merge
+DESIREDVELFACTOR = 0.92  # determines at what speed below desiredvel we want to start overtaking
+MINIMUMDISTANCEFACTOR = 1.1  # minimum factor van desired distance
+SPEEDCAMERA = False
+SPEEDCAMERALOCATION = 1000  # m
+SPEEDCAMERALIMIT = 100  # kph
+MISSCAMERAPROB = 0.02  # probability to not see the camera, and not adjust speed
+
+MONEY = 0  # 1 euro for every car geflitst
 
 alphabet = 'abcdefhijklmnopqrstuvwxyz0123456789'
 def generateID() -> str:
@@ -30,7 +40,8 @@ class Car:
     b_max = 4.66  # m/s^2
     sqrt_ab = 2*sqrt(a_max*b_max)
     debugcounter = 0
-    def __init__(self, x = 0,spawnframe=0):
+
+    def __init__(self, x=0, spawnframe=0):
         self.desiredvel: float = abs(normal(V_DESIRED, GUSTAVO/3.6))  # Absolute value necessary to avoid negatives (even if unlikely!)
         if (self.desiredvel < V_MIN):
             self.desiredvel = V_MIN
@@ -48,14 +59,18 @@ class Car:
         self.debug = False
         self.s = 100000
         self.multiplier = 1
+        self.seencamera = False
+        self.pastcamera = False
     
     def update(self, dt: float, frame: int, infront: Union['Car', None] = None):
-        if (self.frame >= frame):
+        if self.frame >= frame:
             return  # Avoid double updating
         self.frame = frame
         crash = False
 
         # self.checkAnger(dt)
+        if SPEEDCAMERA and not self.pastcamera:
+            self.checkSpeedCamera()
 
         self.overtaking = 0
 
@@ -77,25 +92,39 @@ class Car:
             # if (s < 1.2 * self.s0 and self.vel < 0.95 * self.desiredvel and self.desiredvel > infront.vel):
             #     self.overtaking = 1
 
-            # The factor here is related to the factor in Simulation.overtakingLogic
-            factor = -2
-            if ((self.a < factor * (120 / (3.6 * self.multiplier * self.desiredvel)) ** 2
-                 or self.vel < 0.92 * self.multiplier * self.desiredvel)
-                    and self.multiplier * self.desiredvel > infront.vel):
-                # if we're slowing down or going slow, and we are able to accelerate, lets overtake
+            # (self.a < PERSONALFACTOR * (120 / (3.6 * self.multiplier * self.desiredvel)) ** 2
+            if (self.vel < DESIREDVELFACTOR * self.multiplier * self.desiredvel
+                    and self.desiredvel > infront.vel and self.s <= MINIMUMDISTANCEFACTOR*self.s0):
+                # if going slow, and able to accelerate, and are close enough to car in front
                 self.overtaking = 1
 
         # Do we want to merge?
-        if (-0.5 * (120 / (3.6 * self.multiplier * self.desiredvel)) ** 2
-                < self.a < 0.5 * (120 / (3.6 * self.multiplier * self.desiredvel)) ** 2):
+        if (-MERGEFACTOR * (120 / (3.6 * self.multiplier * self.desiredvel)) ** 2
+                < self.a < MERGEFACTOR * (120 / (3.6 * self.multiplier * self.desiredvel)) ** 2):
             # Used to be dependent on relation between desiredvel and vel but
             # that doesn't work in traffic (no cars would merge)
-            # Now we merge when we're not accelerating much
+            # Now we want to merge when we're not accelerating much
             self.overtaking = -1
 
-        if (self.vel < 0):
+        if self.vel < 0:
+            print("ho there partner!")
             self.vel = 0
         self.x += self.vel*dt*PIXEL_PER_M  # x is in pixels, vel is in m/s
+
+    def checkSpeedCamera(self):
+        if not self.seencamera:
+            if (SPEEDCAMERALOCATION - 60) * PIXEL_PER_M < self.x < SPEEDCAMERALOCATION * PIXEL_PER_M:
+                self.seencamera = True
+                if random.random() > MISSCAMERAPROB:
+                    if self.vel*3.6 > SPEEDCAMERALIMIT:
+                        self.multiplier = (SPEEDCAMERALIMIT-10) / (self.desiredvel * 3.6)  # desvel just under limit
+        else:
+            if SPEEDCAMERALOCATION * PIXEL_PER_M <= self.x:
+                global MONEY
+                if self.vel*3.6 > SPEEDCAMERALIMIT:
+                    MONEY += 1
+                self.pastcamera = True
+                self.multiplier = 1
 
     def determineGap(self, infront):
         """Set self.s to the gap with the car in front, in meters"""
@@ -215,7 +244,7 @@ class Car:
 
     def adaptToSpeedLimit(self, speedlimit):
         """Given a speed limit, check whether we should adapt our desired velocity to it"""
-        if self.vel*3.6 <= speedlimit-10 and self.desiredvel >= speedlimit:
+        if self.desiredvel >= speedlimit:  # and self.vel*3.6 <= speedlimit-10
             # Only slow down car if he's in traffic (slow) and is going faster than the speed limit
             self.multiplier = speedlimit / 120
 
