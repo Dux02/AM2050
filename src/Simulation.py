@@ -1,7 +1,6 @@
 from typing import List
 from .Lane import Lane, DataLane, TRAFFICSPEEDLIMIT, DYNAMIC
-from .Car import (Car, CarData, DataCar, GRINDSET, PIXEL_PER_M, PERSONALFACTOR, XENOFACTOR, DESIREDVELFACTOR,
-                  MINIMUMDISTANCEFACTOR)
+from .Car import Car, CarData, DataCar, GRINDSET, PIXEL_PER_M, DESIREDVELFACTOR
 from .Output import AbstractOutput, FileOutput
 import numpy as np
 import pygame

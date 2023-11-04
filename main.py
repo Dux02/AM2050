@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pickle
 
+
 def moving_average(a, n=3):
     ret = np.cumsum(a, dtype=float)
     ret[n:] = ret[n:] - ret[:-n]
