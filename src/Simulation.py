@@ -84,7 +84,7 @@ class Simulation:
                 continue
             for car in carsOvertaking[i]:
                 self.overtakingLogic(car, i, self.lanes[i])
-                car.overtaking = 0
+                # car.overtaking = 0
         
         self.frames += 1    
         if self.frames % int(100/self.dt) == 0:

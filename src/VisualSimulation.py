@@ -2,7 +2,7 @@ from typing import Union
 from .Simulation import Simulation
 from .Output import AbstractOutput
 from .Car import (V_MIN, V_DESIRED, GUSTAVO, PIXEL_PER_M, CAR_LENGTH, CAR_HEIGHT, LANE_HEIGHT, LINE_HEIGHT,
-                  SPEEDCAMERALOCATION, SPEEDCAMERA)
+                  SPEEDCAMERALOCATION, SPEEDCAMERA, DESIREDVELFACTOR)
 import pygame
 import numpy as np
 import time
@@ -176,7 +176,7 @@ class VisualSimulation(Simulation):
                     # rdr.window.blit(rdr.image, (draw_x, draw_y))
 
                     if not self.pretty:
-                        acc_text = rdr.font2.render(str(round(car.vel*3.6)), True, rdr.white, color)
+                        acc_text = rdr.font2.render(str(round(car.vel*3.6))+","+str(car.overtaking), True, rdr.white, color)
                         rdr.window.blit(acc_text, (draw_x, draw_y))
                         pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x + cl, draw_y + int(ch / 2), in_front_dist, 1))
 

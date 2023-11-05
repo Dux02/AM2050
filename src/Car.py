@@ -20,18 +20,18 @@ CAR_LENGTH = 3  # meters
 CAR_HEIGHT = 1*factor  # meters
 PIXEL_PER_M = 10/factor  # pixels per meter
 LANE_HEIGHT, LINE_HEIGHT = 2*factor, 0.1*factor  # meters
-PERSONALFACTOR, XENOFACTOR = 1, 1  # how hard we will let ourselves or others brake when changing lanes m/s^2
+PERSONALFACTOR, XENOFACTOR = 2, 2  # how hard we will let ourselves or others brake when changing lanes m/s^2
 # currently XENOFACTOR has no role (xenofactor=personalfactor)
 LANESTD = 0.1  # Standard deviation for the above factors
 MERGEFACTOR = 0.4  # how close to zero should acceleration be to want to merge
 DESIREDVELFACTOR = 0.95  # determines at what speed below desiredvel we want to start overtaking
-MINIMUMDISTANCEFACTOR = 1.1  # minimum factor van desired distance before overtaking
+MINIMUMDISTANCEFACTOR = 1.1  # minimum seconds in travel distance before overtaking
 SPEEDCAMERA = False
 SPEEDCAMERALOCATION = 1000  # m
 SPEEDCAMERALIMIT = 100  # kph
 MISSCAMERAPROB = 0.02  # probability to not see the camera, and not adjust speed
 VDESIREDEXPONENT = 4  # exponent in calculation of acceleration
-HEADWAYTIME = 1.6  # s
+HEADWAYTIME = 0.5  # s
 
 MONEY = 0  # 1 euro for every car geflitst
 
@@ -72,7 +72,7 @@ class Car:
         self.seencamera = False
         self.pastcamera = False
         self.personalfactor = - abs(normal(PERSONALFACTOR, LANESTD))
-        self.xenofactor = self.personalfactor
+        self.xenofactor = - abs(normal(XENOFACTOR, LANESTD))
     
     def update(self, dt: float, frame: int, infront: Union['Car', None] = None):
         if self.frame >= frame:
@@ -98,6 +98,14 @@ class Car:
             if (Car.debugcounter == 10):
                 self.debug = True
 
+        # Do we want to merge?
+        if (-MERGEFACTOR * (V_DESIRED / (self.multiplier * self.desiredvel)) ** 2
+                < self.a < MERGEFACTOR * (V_DESIRED / (self.multiplier * self.desiredvel)) ** 2):
+            # Used to be dependent on relation between desiredvel and vel but
+            # that doesn't work in traffic (no cars would merge)
+            # Now we want to merge when we're not accelerating much
+            self.overtaking = -1
+
         # Do we want to overtake?
         if infront is not None:
             # OVTF = 1.2, the factor time s0. Note this is similar to the previous code w/ a min. 3 second headway instead.
@@ -107,17 +115,9 @@ class Car:
             if ((self.a < self.personalfactor * (V_DESIRED / (self.multiplier * self.desiredvel)) ** 2
                     or self.vel < DESIREDVELFACTOR * self.multiplier * self.desiredvel)
                     and self.multiplier*self.desiredvel > infront.vel+2
-                    and s <= MINIMUMDISTANCEFACTOR*self.s0):
+                    and s <= MINIMUMDISTANCEFACTOR*self.vel*PIXEL_PER_M):
                 # if going slow or slowing down, and able to accelerate past car, and are close enough to car in front
                 self.overtaking = 1
-
-        # Do we want to merge?
-        if (-MERGEFACTOR * (V_DESIRED / (self.multiplier * self.desiredvel)) ** 2
-                < self.a < MERGEFACTOR * (V_DESIRED / (self.multiplier * self.desiredvel)) ** 2):
-            # Used to be dependent on relation between desiredvel and vel but
-            # that doesn't work in traffic (no cars would merge)
-            # Now we want to merge when we're not accelerating much
-            self.overtaking = -1
 
         if self.vel < 0:
             print("ho there partner!")
