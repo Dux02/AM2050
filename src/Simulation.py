@@ -10,8 +10,6 @@ import matplotlib.pyplot as plt
 
 RENDER = True
 
-np.random.seed(5)
-
 def areSafeDist(main_car: 'Car', secondary_car: 'Car', overtaking=1):
     """Returns whether main_car can change into secondary_car's lane,
     based purely on difference in velocity, i.e. does not regard whether
@@ -53,9 +51,10 @@ class Simulation:
     def __init__(self, output: AbstractOutput, dt: float = 1, lanes: int = 1, cars: list[int] = [1]):
         self.lanes: list[Lane] = [Lane(cars[i]) for i in range(lanes)]
         self.dt = dt
-        self.output = output  # File to write interesting data to
+        self.output = output  # File to write interesting data to <3
         self.frames = 0
         self.p = np.random.random()
+        self.carsgenerated = 0
         if not RENDER:
             pygame.quit()
     
@@ -204,7 +203,7 @@ class Simulation:
     
     def finishedCar(self, car: Car):
         # self.output.write(str((self.frames - car.spawnframe)*self.dt) + '\n')
-        self.output.save((self.frames - car.spawnframe)*self.dt)
+        self.output.data["traveltimes"].append((self.frames - car.spawnframe)*self.dt)
         return
     
     def runNormalSpeedSim(self):
@@ -272,15 +271,25 @@ class Simulation:
         """Run a complete simulation, generating carcap cars, with p the probability parameter"""
         self.p = p
         while self.dt*self.frames < time:
-            data_bit = []  # list to gather data we want to save each frame
             self.update()
 
+            # update p
+            self.output.data["p"].append(self.p)
+
+            bit1, bit2 = [], []
             for lane in self.lanes:
+                # update avgspeeds
                 lanespeed = lane.getAvgSpeed()
                 if lanespeed != 0:
-                    data_bit.append(lanespeed)
-                else:
-                    data_bit.append(self.output.data[-1][self.lanes.index(lane) + 1])
+                    bit1.append(lanespeed)
+                else:  # carry the previous speed over
+                    bit1.append(self.output.data["avgspeeds"][-1][self.lanes.index(lane) + 1])
+
+                # update numcars
+                bit2.append(len(lane.vehicles))
+
+                for car in lane.finishedVehicles:
+                    self.finishedCar(car)
 
                 lane.flushVehicles()
 
@@ -289,10 +298,11 @@ class Simulation:
                 # We find 1 - p = (1 - q)^(1/dt)
                 # Rearranging for q gives formula below
                 probPerFrame = 1 - np.power((1 - p), self.dt)
-                lane.generateCarP(probPerFrame, self.frames)
+                if lane.generateCarP(probPerFrame, self.frames):
+                    self.carsgenerated += 1
 
-            if len(data_bit) != 0:
-                self.output.save(data_bit)
+            self.output.data["avgspeeds"].append(bit1)
+            self.output.data["numcars"].append(bit2)
 
         return
 
@@ -305,24 +315,21 @@ class Simulation:
         while (cars > 0 or carsgenerated < carcap):
             data_bit = []  # list to gather data we want to save each frame
             # print(cars)
-
-            self.p = PS[self.frames]
-
             self.update()
             # self.output.save(self.getAvgSpeed()*3.6)
 
             data_bit.append(self.p)
 
-            # if self.frames*self.dt % 5 == 0:
-            #     if np.random.random() < 0.5:
-            #         self.p += 0.1
-            #     else:
-            #         self.p -= 0.1
-            #
-            # if self.p < 0:
-            #     self.p = 0
-            # elif self.p > 1:
-            #     self.p = 1
+            if self.frames*self.dt % 5 == 0:
+                if np.random.random() < 0.5:
+                    self.p += 0.1
+                else:
+                    self.p -= 0.1
+
+            if self.p < 0:
+                self.p = 0
+            elif self.p > 1:
+                self.p = 1
 
             for lane in self.lanes:
                 lanespeed = lane.getAvgSpeed()
@@ -355,22 +362,8 @@ class Simulation:
     def manyCarsTimedRP(self, time=100):
         """Run a complete simulation for time simulated seconds with random walk p"""
         cars = self.getCars()
-        do = False
         while self.dt*self.frames < time:
-            data_bit = []  # list to gather data we want to save each frame
-            # print(cars)
-
-            if do:
-                for lane in self.lanes:
-                    for car in lane.vehicles:
-                        if car.desiredvel*3.6 > 140 and self.frames*self.dt > 25:
-                            car.debug = True
-                            do = False
-                            break
-                    if not do:
-                        break
-
-            self.p = PS[self.frames]
+            data_bit = []  # list to gather data we want to save each framef
 
             self.update()
             # self.output.save(self.getAvgSpeed()*3.6)

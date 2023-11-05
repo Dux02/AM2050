@@ -4,6 +4,7 @@ from random import randint, random
 
 TRAFFICSPEEDLIMIT = 104  # kph
 LANELENGTH = 5000  # m
+SPAWNSAFETYSECONDS = 0.5
 DYNAMIC = False  # Whether the dynamic boards turn on
 
 
@@ -133,7 +134,7 @@ class Lane:
                 self.vehicles.insert(0, Car(spawnframe=frame))
                 self.timeSinceLastCarGenerated = frame
                 return True
-            if self.vehicles[0].x < CAR_LENGTH*PIXEL_PER_M*1.2 + self.vehicles[0].vel * 1.5 * PIXEL_PER_M:  # seconds safety distance
+            if self.vehicles[0].x < CAR_LENGTH*PIXEL_PER_M*1.2 + self.vehicles[0].vel * SPAWNSAFETYSECONDS * PIXEL_PER_M:  # seconds safety distance
                 return False
             newCar = Car(spawnframe=frame)
             newCar.adaptToSpeedLimit(self.speedlimit)

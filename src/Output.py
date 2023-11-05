@@ -3,12 +3,16 @@ from io import TextIOWrapper
 
 class AbstractOutput(object):
     def __init__(self):
-        self.data = []
+        self.data = {"traveltimes": [],
+                     "avgspeeds": [],
+                     "p": [],
+                     "numcars": []}
 
-    def write(self,data: str):
+    def write(self, data: str):
         pass
 
-    def save(self,d):
+    def save(self, d):
+        """Deprecated"""
         self.data.append(d)
 
 

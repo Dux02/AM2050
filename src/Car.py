@@ -30,7 +30,7 @@ SPEEDCAMERA = False
 SPEEDCAMERALOCATION = 1000  # m
 SPEEDCAMERALIMIT = 100  # kph
 MISSCAMERAPROB = 0.02  # probability to not see the camera, and not adjust speed
-VDESIREDEXPONENT = 10  # exponent in calculation of acceleration
+VDESIREDEXPONENT = 4  # exponent in calculation of acceleration
 HEADWAYTIME = 1.6  # s
 
 MONEY = 0  # 1 euro for every car geflitst

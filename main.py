@@ -2,11 +2,12 @@ from numpy.random import f
 from src.Simulation import Simulation, DataSimulation
 from src.VisualSimulation import VisualSimulation
 from src.Output import AbstractOutput, FileOutput
-from src.Car import GUSTAVO, SPEEDCAMERA, HEADWAYTIME, setHEADWAYTIME
-from src.Lane import DYNAMIC
+from src.Car import (GUSTAVO, SPEEDCAMERA, HEADWAYTIME, setHEADWAYTIME, MINIMUMDISTANCEFACTOR, DESIREDVELFACTOR,
+                     VDESIREDEXPONENT, PERSONALFACTOR, XENOFACTOR, LANESTD, MERGEFACTOR, V_DESIRED, V_MIN)
+from src.Lane import DYNAMIC, LANELENGTH, SPAWNSAFETYSECONDS
 import numpy as np
-import pandas as pd
 import pickle
+import random
 
 
 def moving_average(a, n=3):
@@ -17,63 +18,70 @@ def moving_average(a, n=3):
 
 ps, average_times = [], []
 DT = 0.2
-LANES = 1
-DURATION = 2000
-ITERS = 4
+DURATION = 500
+ITERS = 1
 
 saving_data = []
-# plt.figure()
+
 for i in range(ITERS):
-    # Simulate
-    # For data simulation
-    #f = open('./data/'+str(np.datetime64('today'))+'-Lanes ' + str(i),'wb')
-    #output = FileOutput(f)
-    # For visualisation
     output = AbstractOutput()
-    LANES = int(i+1)
-    prob = 0.9/(i+1)
+    LANES = 5
+    PROB = 0.9
     sim = VisualSimulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES, dtype=int)*1, pretty=False)
     if i == 0:
         VisualSimulation.renderer.kill()
 
-    sim.manyCarsTimedPP(1, time=DURATION)
+    sim.manyCarsTimedPP(PROB, time=DURATION)
 
-    # Data gathering
-    saving_data.append(output.data)
-    """
-    ps.append(prob)
-    average_times.append(np.mean(output.data[100:]))  # append av time and ignore first 100 cars
-    """
-    # plt.plot(moving_average(output.data, 50), label=str(i)+" lanes")
-    # f.close()
-    if (i % 1 == 0):
-        print("I did loop", i+1)
+    key = dict()
+    key["data"] = output.data
+    key["carsgenerated"] = sim.carsgenerated
+    key["gustavo"] = GUSTAVO
+    key["duration"] = DURATION
+    key["p"] = PROB
+    key["iterations"] = ITERS
+    key["lanes"] = LANES
+    key["dt"] = DT
+    key["headway"] = HEADWAYTIME
+    key["dynamic"] = DYNAMIC
+    key["speedcamera"] = SPEEDCAMERA
+    key["lanelength"] = LANELENGTH
+    key["minimumdistancefactor"] = MINIMUMDISTANCEFACTOR
+    key["desiredvelfactor"] = DESIREDVELFACTOR
+    key["vdesiredexponent"] = VDESIREDEXPONENT
+    key["mergefactor"] = MERGEFACTOR
+    key["xenofactor"] = XENOFACTOR
+    key["personalfactor"] = PERSONALFACTOR
+    key["vdesired"] = V_DESIRED
+    key["vmin"] = V_MIN
+    key["spawnsafetyseconds"] = SPAWNSAFETYSECONDS
 
-"""
-plt.legend()
-plt.xlabel("Car Index")
-plt.ylabel("Time taken")
-plt.show()
-"""
+    string = ("./data/iters" + str(ITERS) + ",p" + str(PROB) + ",lanes" + str(LANES) + ",dt" + str(DT) + ",dur" + str(DURATION) + " "
+              + ''.join(random.choices("abcdefghijklmnopqrstuvwxyz1234567890", k=8)))
 
-#print(saving_data)
-# f = open('./data/'+str(np.datetime64('today'))+'- p variation, carcap ' +str(CARCAP) + ', iters '
-#          + str(ITERS) + ', lanes ' + str(LANES), 'wb')
-# f = open('./data/data', 'wb')
-string = ('./data/' + 'duration' + str(DURATION) + ',iters' + str(ITERS) + ',lanes' + str(LANES) + ',dt'+str(DT)
-          + ',gustavo' + str(GUSTAVO) + ',hdway'+str(HEADWAYTIME))
-if DYNAMIC:
-    string += ',dynamic'
-if SPEEDCAMERA:
-    string += ',wspeedcamera'
+    f = open(string, 'wb')
+    pickle.dump(key, f, protocol=pickle.HIGHEST_PROTOCOL)
+    f.close()
 
-f = open(string, 'wb')
-pickle.dump(saving_data, f)
-f.close()
-#df = pd.DataFrame(np.array(saving_data))
-#df.to_csv('data.csv', index=False)
+    print("Finished", i+1)
+
+
+
 
 print('hij denk hij is la primo maar hij heeft')
+
+
+
+
+
+
+
+
+
+
+
+
+
 """
 print("I finished!")
 #print(np.max(output.data))
