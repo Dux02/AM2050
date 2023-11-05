@@ -176,7 +176,7 @@ class VisualSimulation(Simulation):
                     # rdr.window.blit(rdr.image, (draw_x, draw_y))
 
                     if not self.pretty:
-                        acc_text = rdr.font2.render(str(round(3.6*car.vel)), True, rdr.white, color)
+                        acc_text = rdr.font2.render(str(round(car.vel*3.6)), True, rdr.white, color)
                         rdr.window.blit(acc_text, (draw_x, draw_y))
                         pygame.draw.rect(rdr.window, color, pygame.Rect(draw_x + cl, draw_y + int(ch / 2), in_front_dist, 1))
 

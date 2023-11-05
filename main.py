@@ -18,7 +18,7 @@ def moving_average(a, n=3):
 ps, average_times = [], []
 DT = 0.2
 LANES = 1
-DURATION = 100
+DURATION = 2000
 ITERS = 4
 
 saving_data = []
@@ -28,16 +28,15 @@ for i in range(ITERS):
     # For data simulation
     #f = open('./data/'+str(np.datetime64('today'))+'-Lanes ' + str(i),'wb')
     #output = FileOutput(f)
-
     # For visualisation
     output = AbstractOutput()
     LANES = int(i+1)
     prob = 0.9/(i+1)
     sim = VisualSimulation(output, dt=DT, lanes=LANES, cars=np.ones(LANES, dtype=int)*1, pretty=False)
-    if i == -1:
+    if i == 0:
         VisualSimulation.renderer.kill()
 
-    sim.manyCarsTimedPP(prob, time=DURATION)
+    sim.manyCarsTimedPP(1, time=DURATION)
 
     # Data gathering
     saving_data.append(output.data)

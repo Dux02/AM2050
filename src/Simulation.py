@@ -11,16 +11,6 @@ import matplotlib.pyplot as plt
 RENDER = True
 
 np.random.seed(5)
-PS = [1]
-for i in range(1, 100000):
-    x = PS[-1] + np.random.choice([0.1, -0.1])
-    if x > 1:
-        x = 1
-    elif x < 0:
-        x = 0
-    for j in range(150):
-        PS.append(x)
-
 
 def areSafeDist(main_car: 'Car', secondary_car: 'Car', overtaking=1):
     """Returns whether main_car can change into secondary_car's lane,
@@ -134,7 +124,10 @@ class Simulation:
 
         for j in indices:
             otherCar = desiredLane.vehicles[j]
-            k = indices.index(j)
+            if otherCar.x <= car.x:
+                k = 0
+            else:
+                k = 1
 
             if not areSafeDist(car, otherCar, car.overtaking):
                 # Check whether if we overtake, we would do so into another car
@@ -144,7 +137,7 @@ class Simulation:
                 # Don't go if it will cause the car behind to hit his brakes hard
                 canOvertake = False
                 break
-            elif k == 1 and car.calcAccel(otherCar) < car.personalfactor * ((3.6 * car.multiplier * car.desiredvel) / 120)**2:
+            elif k == 1 and car.calcAccel(otherCar) < (car.personalfactor-0.1) * ((3.6 * car.multiplier * car.desiredvel) / 120)**2:
                 # Don't go if the car in front will cause us to hit our brakes hard
                 canOvertake = False
                 break

@@ -24,7 +24,7 @@ PERSONALFACTOR, XENOFACTOR = 1, 1  # how hard we will let ourselves or others br
 # currently XENOFACTOR has no role (xenofactor=personalfactor)
 LANESTD = 0.1  # Standard deviation for the above factors
 MERGEFACTOR = 0.4  # how close to zero should acceleration be to want to merge
-DESIREDVELFACTOR = 0.98  # determines at what speed below desiredvel we want to start overtaking
+DESIREDVELFACTOR = 0.95  # determines at what speed below desiredvel we want to start overtaking
 MINIMUMDISTANCEFACTOR = 1.1  # minimum factor van desired distance before overtaking
 SPEEDCAMERA = False
 SPEEDCAMERALOCATION = 1000  # m
@@ -87,7 +87,7 @@ class Car:
         self.overtaking = 0
 
         # Find self.s
-        self.determineGap(infront)
+        s = self.determineGap(infront)
 
         # Update speed and check if we've crashed
         crash = self.advancedSpeed(dt, infront)
@@ -104,10 +104,10 @@ class Car:
             # if (s < 1.2 * self.s0 and self.vel < 0.95 * self.desiredvel and self.desiredvel > infront.vel):
             #     self.overtaking = 1
 
-            if ((self.a < PERSONALFACTOR * (V_DESIRED / (self.multiplier * self.desiredvel)) ** 2
+            if ((self.a < self.personalfactor * (V_DESIRED / (self.multiplier * self.desiredvel)) ** 2
                     or self.vel < DESIREDVELFACTOR * self.multiplier * self.desiredvel)
                     and self.multiplier*self.desiredvel > infront.vel+2
-                    and self.s <= MINIMUMDISTANCEFACTOR*self.s0):
+                    and s <= MINIMUMDISTANCEFACTOR*self.s0):
                 # if going slow or slowing down, and able to accelerate past car, and are close enough to car in front
                 self.overtaking = 1
 
@@ -140,11 +140,11 @@ class Car:
                 self.multiplier = 1
 
     def determineGap(self, infront):
-        """Set self.s to the gap with the car in front, in pixels"""
-        self.s = 1000000
+        """Set s to the gap with the car in front, in pixels"""
+        s = 1000000
         if infront is not None:
             s = infront.x - self.x - CAR_LENGTH*PIXEL_PER_M
-            self.s = s
+        return s
 
     def checkAnger(self, dt):
         if (self.vel < self.multiplier*self.desiredvel * 0.8 and not self.pissed):
@@ -180,8 +180,9 @@ class Car:
         alpha = 0
         crashed = False
         if infront is not None:
-            if self.s <= 0.1:  # If they're too close, avoid division by 0!
-                self.s = 2.1 * PIXEL_PER_M  # Must be bigger than the jam distance to avoid acceleration -> -inf!
+            s = infront.x - self.x - CAR_LENGTH*PIXEL_PER_M
+            if s <= 0.1:  # If they're too close, avoid division by 0!
+                s = 2.1 * PIXEL_PER_M  # Must be bigger than the jam distance to avoid acceleration -> -inf!
                 self.vel = 0
                 crashed = True
 
@@ -196,7 +197,11 @@ class Car:
     def calcAccel(self, infront: 'Car') -> float:
         """Calculates and returns acceleration for self with infront the car infront"""
         self.s0 = self.desiredDist(infront) * PIXEL_PER_M  # s0 in pixels
-        alpha = self.s0 / self.s
+        if infront is not None:
+            s = infront.x - self.x - CAR_LENGTH*PIXEL_PER_M
+        else:
+            s = 1000000
+        alpha = self.s0 / s
         return self.a_max * (1 - (self.vel / (self.multiplier*self.desiredvel)) ** VDESIREDEXPONENT - alpha ** 2)
 
     def desiredDist(self, infront: Union['Car', None] = None) -> float:
