@@ -249,8 +249,14 @@ class Simulation:
             # self.output.save(self.getAvgSpeed()*3.6)
 
             for lane in self.lanes:
+                lanespeed = lane.getAvgSpeed()
+                if lanespeed != 0:
+                    data_bit.append(lanespeed)
+                else:
+                    data_bit.append(self.output.data[-1][self.lanes.index(lane) + 1])
+
                 for car in lane.finishedVehicles:
-                    self.finishedCar(car)  # time it took to get to the end
+                    # self.finishedCar(car)  # time it took to get to the end
                     cars -= 1
                 lane.flushVehicles()
                 
@@ -263,6 +269,34 @@ class Simulation:
                     if lane.generateCarP(probPerFrame, self.frames):
                         cars += 1
                         carsgenerated += 1
+
+            if len(data_bit) != 0:
+                self.output.save(data_bit)
+
+        return
+
+    def manyCarsTimedPP(self, p: float, time=10):
+        """Run a complete simulation, generating carcap cars, with p the probability parameter"""
+        self.p = p
+        while self.dt*self.frames < time:
+            data_bit = []  # list to gather data we want to save each frame
+            self.update()
+
+            for lane in self.lanes:
+                lanespeed = lane.getAvgSpeed()
+                if lanespeed != 0:
+                    data_bit.append(lanespeed)
+                else:
+                    data_bit.append(self.output.data[-1][self.lanes.index(lane) + 1])
+
+                lane.flushVehicles()
+
+                # Note 1 - p = chance that no car is spawned in one second
+                # if q is the chance of spawning a car in one frame (there are 1/dt frames in a second)
+                # We find 1 - p = (1 - q)^(1/dt)
+                # Rearranging for q gives formula below
+                probPerFrame = 1 - np.power((1 - p), self.dt)
+                lane.generateCarP(probPerFrame, self.frames)
 
             if len(data_bit) != 0:
                 self.output.save(data_bit)
@@ -390,7 +424,7 @@ class Simulation:
 
         return
     
-    def readFromPickle(self): # TODO
+    def readFromPickle(self):  # TODO
         return
 
 class DataSimulation(Simulation):

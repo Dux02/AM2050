@@ -133,7 +133,7 @@ class Lane:
                 self.vehicles.insert(0, Car(spawnframe=frame))
                 self.timeSinceLastCarGenerated = frame
                 return True
-            if self.vehicles[0].x < CAR_LENGTH*PIXEL_PER_M + self.vehicles[0].vel * 0.5 * PIXEL_PER_M:  # 0 seconds safety distance
+            if self.vehicles[0].x < CAR_LENGTH*PIXEL_PER_M + self.vehicles[0].vel * 0.5 * PIXEL_PER_M:  # seconds safety distance
                 return False
             newCar = Car(spawnframe=frame)
             newCar.adaptToSpeedLimit(self.speedlimit)
